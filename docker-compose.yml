@@ -1,0 +1,20 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: orders-pg
+    restart: unless-stopped
+    ports:
+      - "${PG_DOCKER_PORT:-55432}:5432"
+    environment:
+      POSTGRES_PASSWORD: ${PG_DOCKER_PASSWORD}
+      POSTGRES_DB: ${PG_DOCKER_DB}
+      POSTGRES_USER: ${PG_DOCKER_USER}
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "${PG_DOCKER_USER}", "-d", "${PG_DOCKER_DB}"]
+      interval: 3s
+      timeout: 2s
+      retries: 20
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+volumes:
+  pgdata: {}

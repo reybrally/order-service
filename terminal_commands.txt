@@ -1,0 +1,3 @@
+
+ подключение к бдшке
+ psql "host=127.0.0.1 port=55432 user=postgres password=postgres dbname=orders_db sslmode=disable"
