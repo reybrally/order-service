@@ -5,16 +5,12 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="5cc24089-25e6-4c40-a19c-415ac3672e49" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/internal/adapters/http/handlers/health_handler.go" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/internal/adapters/http/handlers/order_handler.go" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/internal/adapters/repo/create_or_update.go" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/internal/adapters/repo/find_by_uid.go" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/internal/adapters/repo/order_repo.go" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/internal/app/orders/ports.go" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/internal/app/orders/service.go" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/internal/domain/order/delivery.go" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/internal/domain/order/item.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/internal/adapters/repo/get.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Makefile" beforeDir="false" afterPath="$PROJECT_DIR$/Makefile" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/cmd/seeder/main.go" beforeDir="false" afterPath="$PROJECT_DIR$/cmd/seeder/main.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/internal/adapters/repo/create_or_update.go" beforeDir="false" afterPath="$PROJECT_DIR$/internal/adapters/repo/create_or_update.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/internal/adapters/repo/find_by_uid.go" beforeDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />

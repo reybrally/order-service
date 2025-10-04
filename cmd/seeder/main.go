@@ -1,4 +1,3 @@
-// cmd/seeder/main.go
 package main
 
 import (
@@ -23,7 +22,6 @@ func getenv(key, def string) string {
 func main() {
 	ctx := context.Background()
 
-	// Берём конфиг из .env (у тебя всё уже есть в docker-compose)
 	host := getenv("DB_HOST", "127.0.0.1")
 	port := getenv("DB_PORT", "55432")
 	user := getenv("DB_USER", "postgres")
@@ -53,7 +51,6 @@ func main() {
 		}
 	}()
 
-	// ---------- вставляем orders батчем ----------
 	{
 		batch := &pgx.Batch{}
 		now := time.Now()
@@ -88,7 +85,6 @@ func main() {
 		}
 	}
 
-	// ---------- вставляем items батчем ----------
 	{
 		batch := &pgx.Batch{}
 		for i := 1; i <= ordersN; i++ {

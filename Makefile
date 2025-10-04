@@ -8,7 +8,6 @@ export $(shell grep -Eo '^[A-Z_]+=' .env | sed 's/=//')
 MIGRATION_FOLDER = $(CURDIR)/internal/migrations
 DB_SETUP = 'user=$(DB_USER) password=$(DB_PASSWORD) dbname=$(DB_NAME) host=$(DB_HOST) port=$(DB_PORT) sslmode=$(DB_SSLMODE)'
 
-# -------- Docker --------
 db-up:
 	docker compose up -d postgres
 
@@ -18,7 +17,6 @@ db-down:
 db-logs:
 	docker logs -f orders-pg
 
-# -------- Goose --------
 goose-install:
 	@go install github.com/pressly/goose/v3/cmd/goose@latest
 	@goose --version
@@ -39,10 +37,8 @@ migration-reset:
 migration-status:
 	goose -dir "$(MIGRATION_FOLDER)" postgres $(DB_SETUP) status
 
-# удобные цели
 db-init: db-up goose-install migration-up migration-status
 db-reseed: migration-reset migration-up migration-status
 
-# -------- Tests --------
 test-all:
 	@go test ./... -v -cover

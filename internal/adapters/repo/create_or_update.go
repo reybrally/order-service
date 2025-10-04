@@ -9,7 +9,8 @@ import (
 	"github.com/reybrally/order-service/internal/domain/order"
 )
 
-const qOrders = `INSERT INTO orders (
+const (
+	qOrders = `INSERT INTO orders (
 		order_uid, track_number, entry, locale, internal_signature, customer_id,
 		delivery_service, shard_key, sm_id, date_created, oof_shard
 	) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
@@ -28,6 +29,39 @@ const qOrders = `INSERT INTO orders (
 	order_uid, track_number, entry, locale, internal_signature, customer_id,
 		delivery_service, shard_key, sm_id, date_created, oof_shard;
 	`
+
+	qDelivery = `
+	INSERT INTO order_deliveries (order_uid, name, phone, zip, city, address, region, email)
+	VALUES ($1,$2,$3,$4,$5,$6,$7,$8) ON CONFLICT (order_uid) DO UPDATE SET
+	                                                                       delivery_name = EXCLUDED.name,
+	                                                                       phone = EXCLUDED.phone,
+	                                                                       zip = EXCLUDED.zip,
+	                                                                       city = EXCLUDED.city,
+	                                                                       address = EXCLUDED.address,
+	                                                                       region = EXCLUDED.region,
+	                                                                       email = EXCLUDED.email
+	RETURNING delivery_name, phone, zip, city, address, region, email;`
+
+	qItem = `
+INSERT INTO order_items (
+    order_uid, chrt_id, track_number, price, rid, name, sale, size, total_price, nm_id, brand, status
+)
+VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+ON CONFLICT (order_uid, chrt_id) DO UPDATE
+SET
+    track_number = EXCLUDED.track_number,
+    price        = EXCLUDED.price,
+    rid          = EXCLUDED.rid,
+    item_name         = EXCLUDED.name,   
+    sale         = EXCLUDED.sale,
+    item_size         = EXCLUDED.size,   
+    total_price  = EXCLUDED.total_price,
+    nm_id        = EXCLUDED.nm_id,
+    brand        = EXCLUDED.brand,
+    status       = EXCLUDED.status
+RETURNING chrt_id, track_number, price, rid, item_name, sale, item_size, total_price, nm_id, brand, status;
+`
+)
 
 func (r *OrderRepo) CreateOrUpdateOrder(ctx context.Context, o order.Order) (order.Order, error) {
 	tx, err := r.repo.Begin(ctx)
@@ -55,17 +89,7 @@ func (r *OrderRepo) CreateOrUpdateOrder(ctx context.Context, o order.Order) (ord
 		}
 		return order.Order{}, err
 	}
-	const qDelivery = `
-	INSERT INTO order_deliveries (order_uid, name, phone, zip, city, address, region, email)
-	VALUES ($1,$2,$3,$4,$5,$6,$7,$8) ON CONFLICT (order_uid) DO UPDATE SET
-	                                                                       delivery_name = EXCLUDED.name,
-	                                                                       phone = EXCLUDED.phone,
-	                                                                       zip = EXCLUDED.zip,
-	                                                                       city = EXCLUDED.city,
-	                                                                       address = EXCLUDED.address,
-	                                                                       region = EXCLUDED.region,
-	                                                                       email = EXCLUDED.email
-	RETURNING delivery_name, phone, zip, city, address, region, email;`
+
 	var deliveryRow DeliveryRow
 	err = tx.QueryRow(ctx, qDelivery, o.Delivery.Name, o.Delivery.Phone, o.Delivery.Zip, o.Delivery.City,
 		o.Delivery.Address, o.Delivery.Region, o.Delivery.Email,
@@ -85,26 +109,7 @@ func (r *OrderRepo) CreateOrUpdateOrder(ctx context.Context, o order.Order) (ord
 		}
 		return order.Order{}, err
 	}
-	const qItem = `
-INSERT INTO order_items (
-    order_uid, chrt_id, track_number, price, rid, name, sale, size, total_price, nm_id, brand, status
-)
-VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
-ON CONFLICT (order_uid, chrt_id) DO UPDATE
-SET
-    track_number = EXCLUDED.track_number,
-    price        = EXCLUDED.price,
-    rid          = EXCLUDED.rid,
-    item_name         = EXCLUDED.name,   
-    sale         = EXCLUDED.sale,
-    item_size         = EXCLUDED.size,   
-    total_price  = EXCLUDED.total_price,
-    nm_id        = EXCLUDED.nm_id,
-    brand        = EXCLUDED.brand,
-    status       = EXCLUDED.status
-RETURNING chrt_id, track_number, price, rid, item_name, sale, item_size, total_price, nm_id, brand, status;
 
-`
 	ItemRows := make([]ItemRow, 0)
 	for i := range o.Items {
 		var itemRow ItemRow
