@@ -70,7 +70,7 @@ func main() {
 			batch.Queue(`
 				INSERT INTO orders (
 					order_uid, track_number, entry, locale, internal_signature,
-					customer_id, delivery_service, shardkey, sm_id, date_created, oof_shard
+					customer_id, delivery_service, shard_key, sm_id, date_created, oof_shard
 				) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
 				ON CONFLICT (order_uid) DO NOTHING
 			`,
@@ -108,8 +108,8 @@ func main() {
 
 				batch.Queue(`
 					INSERT INTO order_items (
-						order_uid, chrt_id, track_number, price, rid, name, sale,
-						size, total_price, nm_id, brand, status
+						order_uid, chrt_id, track_number, price, rid, item_name, sale,
+						item_size, total_price, nm_id, brand, status
 					) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
 					ON CONFLICT (order_uid, chrt_id) DO NOTHING
 				`,
