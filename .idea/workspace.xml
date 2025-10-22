@@ -4,13 +4,19 @@
     <option name="autoReloadType" value="ALL" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="5cc24089-25e6-4c40-a19c-415ac3672e49" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/internal/adapters/repo/get.go" afterDir="false" />
+    <list default="true" id="5cc24089-25e6-4c40-a19c-415ac3672e49" name="Changes" comment="fix: migrations and seeder">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Makefile" beforeDir="false" afterPath="$PROJECT_DIR$/Makefile" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/cmd/seeder/main.go" beforeDir="false" afterPath="$PROJECT_DIR$/cmd/seeder/main.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/go.mod" beforeDir="false" afterPath="$PROJECT_DIR$/go.mod" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/go.sum" beforeDir="false" afterPath="$PROJECT_DIR$/go.sum" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/internal/adapters/cache/cache.go" beforeDir="false" afterPath="$PROJECT_DIR$/internal/adapters/cache/cache.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/internal/adapters/cache/lru_test.go" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/internal/adapters/repo/create_or_update.go" beforeDir="false" afterPath="$PROJECT_DIR$/internal/adapters/repo/create_or_update.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/internal/adapters/repo/find_by_uid.go" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/internal/adapters/repo/get.go" beforeDir="false" afterPath="$PROJECT_DIR$/internal/adapters/repo/get.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/internal/adapters/repo/order_repo.go" beforeDir="false" afterPath="$PROJECT_DIR$/internal/adapters/repo/order_repo.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/internal/adapters/repo/search.go" beforeDir="false" afterPath="$PROJECT_DIR$/internal/adapters/repo/search.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/internal/app/orders/service.go" beforeDir="false" afterPath="$PROJECT_DIR$/internal/services/service.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/internal/migrations/001_init.sql" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/terminal_commands.txt" beforeDir="false" afterPath="$PROJECT_DIR$/terminal_commands.txt" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -24,7 +30,7 @@
       </list>
     </option>
   </component>
-  <component name="GOROOT" url="file:///usr/local/go" />
+  <component name="GOROOT" url="file://$USER_HOME$/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.7.darwin-arm64" />
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
@@ -55,7 +61,23 @@
   <component name="PropertiesComponent">{
   &quot;keyToString&quot;: {
     &quot;DefaultGoTemplateProperty&quot;: &quot;Go File&quot;,
+    &quot;Docker.docker-compose.yml.postgres: Compose Deployment.executor&quot;: &quot;Run&quot;,
+    &quot;Docker.docker-compose.yml: Compose Deployment.executor&quot;: &quot;Run&quot;,
+    &quot;Go Build.go build github.com/reybrally/order-service/cmd/seeder.executor&quot;: &quot;Run&quot;,
+    &quot;Go Test.TestLRUCache in github.com/reybrally/order-service/internal/adapters/cache.executor&quot;: &quot;Run&quot;,
+    &quot;Go Test.TestLRUCacheUpdateValue in github.com/reybrally/order-service/internal/adapters/cache.executor&quot;: &quot;Debug&quot;,
+    &quot;Go Test.TestRepo_DeleteOrder in github.com/reybrally/order-service/internal/adapters/repo.executor&quot;: &quot;Run&quot;,
+    &quot;Go Test.TestRepo_FindByUID_NotFound in github.com/reybrally/order-service/internal/adapters/repo.executor&quot;: &quot;Run&quot;,
+    &quot;Go Test.TestRepo_SearchOrders in github.com/reybrally/order-service/internal/adapters/repo.executor&quot;: &quot;Run&quot;,
+    &quot;Go Test.go test github.com/reybrally/order-service/internal/adapters/cache.executor&quot;: &quot;Run&quot;,
+    &quot;Go Test.go test github.com/reybrally/order-service/internal/adapters/repo.executor&quot;: &quot;Run&quot;,
+    &quot;Go Test.gobench github.com/reybrally/order-service/internal/adapters/repo.executor&quot;: &quot;Run&quot;,
+    &quot;Go Test.repo_integration_test.go.executor&quot;: &quot;Run&quot;,
+    &quot;Makefile Target.db-logs.executor&quot;: &quot;Run&quot;,
+    &quot;Makefile Target.db-up.executor&quot;: &quot;Run&quot;,
+    &quot;Makefile Target.migration-create.executor&quot;: &quot;Run&quot;,
     &quot;Makefile Target.migration-down.executor&quot;: &quot;Run&quot;,
+    &quot;Makefile Target.migration-up.executor&quot;: &quot;Run&quot;,
     &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
     &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
     &quot;RunOnceActivity.go.formatter.settings.were.checked&quot;: &quot;true&quot;,
@@ -77,19 +99,75 @@
 }</component>
   <component name="RecentsManager">
     <key name="MoveFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/internal/services" />
       <recent name="$PROJECT_DIR$/internal" />
     </key>
   </component>
-  <component name="RunManager">
-    <configuration name="migration-down" type="MAKEFILE_TARGET_RUN_CONFIGURATION" factoryName="Makefile" temporary="true">
-      <makefile filename="$PROJECT_DIR$/Makefile" target="migration-down" workingDirectory="" arguments="">
-        <envs />
-      </makefile>
+  <component name="RunManager" selected="Go Test.go test github.com/reybrally/order-service/internal/adapters/repo">
+    <configuration name="go build github.com/reybrally/order-service/cmd/seeder" type="GoApplicationRunConfiguration" factoryName="Go Application" temporary="true" nameIsGenerated="true">
+      <module name="order-service" />
+      <working_directory value="$PROJECT_DIR$" />
+      <kind value="PACKAGE" />
+      <package value="github.com/reybrally/order-service/cmd/seeder" />
+      <directory value="$PROJECT_DIR$" />
+      <filePath value="$PROJECT_DIR$/cmd/seeder/main.go" />
+      <method v="2" />
+    </configuration>
+    <configuration name="go test github.com/reybrally/order-service/internal/adapters/repo" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
+      <module name="order-service" />
+      <working_directory value="$PROJECT_DIR$/internal/adapters/repo" />
+      <root_directory value="$PROJECT_DIR$" />
+      <kind value="PACKAGE" />
+      <package value="github.com/reybrally/order-service/internal/adapters/repo" />
+      <directory value="$PROJECT_DIR$" />
+      <filePath value="$PROJECT_DIR$" />
+      <framework value="gotest" />
+      <method v="2" />
+    </configuration>
+    <configuration name="repo_integration_test.go" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
+      <module name="order-service" />
+      <working_directory value="$PROJECT_DIR$/internal/adapters/repo" />
+      <root_directory value="$PROJECT_DIR$" />
+      <kind value="FILE" />
+      <directory value="$PROJECT_DIR$" />
+      <filePath value="$PROJECT_DIR$/internal/adapters/repo/repo_integration_test.go" />
+      <framework value="gotest" />
+      <method v="2" />
+    </configuration>
+    <configuration default="true" type="docker-deploy" factoryName="docker-compose.yml" temporary="true">
+      <deployment type="docker-compose.yml">
+        <settings />
+      </deployment>
+      <method v="2" />
+    </configuration>
+    <configuration name="docker-compose.yml: Compose Deployment" type="docker-deploy" factoryName="docker-compose.yml" temporary="true" server-name="Docker">
+      <deployment type="docker-compose.yml">
+        <settings>
+          <option name="sourceFilePath" value="docker-compose.yml" />
+        </settings>
+      </deployment>
+      <method v="2" />
+    </configuration>
+    <configuration name="docker-compose.yml.postgres: Compose Deployment" type="docker-deploy" factoryName="docker-compose.yml" temporary="true" server-name="Docker">
+      <deployment type="docker-compose.yml">
+        <settings>
+          <option name="services">
+            <list>
+              <option value="postgres" />
+            </list>
+          </option>
+          <option name="sourceFilePath" value="docker-compose.yml" />
+        </settings>
+      </deployment>
       <method v="2" />
     </configuration>
     <recent_temporary>
       <list>
-        <item itemvalue="Makefile Target.migration-down" />
+        <item itemvalue="Go Test.go test github.com/reybrally/order-service/internal/adapters/repo" />
+        <item itemvalue="Go Test.repo_integration_test.go" />
+        <item itemvalue="Go Build.go build github.com/reybrally/order-service/cmd/seeder" />
+        <item itemvalue="Docker.docker-compose.yml.postgres: Compose Deployment" />
+        <item itemvalue="Docker.docker-compose.yml: Compose Deployment" />
       </list>
     </recent_temporary>
   </component>
@@ -104,6 +182,11 @@
   <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
   <component name="TypeScriptGeneratedFilesManager">
     <option name="version" value="3" />
+  </component>
+  <component name="VcsManagerConfiguration">
+    <MESSAGE value="feat: add lru cache and tests for orders" />
+    <MESSAGE value="fix: migrations and seeder" />
+    <option name="LAST_COMMIT_MESSAGE" value="fix: migrations and seeder" />
   </component>
   <component name="VgoProject">
     <settings-migrated>true</settings-migrated>

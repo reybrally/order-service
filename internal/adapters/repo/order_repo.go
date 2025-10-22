@@ -3,6 +3,7 @@ package repo
 import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/reybrally/order-service/internal/domain/order"
+	"sync"
 	"time"
 )
 
@@ -33,6 +34,13 @@ type ItemRow struct {
 
 type OrderRepo struct {
 	repo *pgxpool.Pool
+	mu   sync.Mutex
+}
+
+type PaymentRow struct {
+	Transaction, RequestID, Currency, Provider, Bank string
+	Amount, DeliveryCost, GoodsTotal, CustomFee      int64
+	PaymentDt                                        time.Time
 }
 
 func NewOrderRepo(pool *pgxpool.Pool) *OrderRepo { return &OrderRepo{repo: pool} }

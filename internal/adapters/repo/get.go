@@ -60,6 +60,9 @@ WHERE o.order_uid = $1;
 `
 
 func (r OrderRepo) GetOrder(ctx context.Context, uid string) (order.Order, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
 	rows, err := r.repo.Query(ctx, qFindFullOrderByUID, uid)
 	if err != nil {
 		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) || ctx.Err() != nil {
@@ -69,10 +72,12 @@ func (r OrderRepo) GetOrder(ctx context.Context, uid string) (order.Order, error
 	}
 	defer rows.Close()
 	var (
-		out order.Order
+		found bool
+		out   order.Order
 	)
 
 	for rows.Next() {
+		found = true
 
 		// order
 		var (
@@ -172,6 +177,9 @@ func (r OrderRepo) GetOrder(ctx context.Context, uid string) (order.Order, error
 			return order.Order{}, orders.ErrTimeout
 		}
 		return order.Order{}, err
+	}
+	if !found {
+		return order.Order{}, orders.ErrNotFound
 	}
 	return out, nil
 }

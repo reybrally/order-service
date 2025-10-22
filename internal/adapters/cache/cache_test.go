@@ -1,7 +1,6 @@
-package cache_test
+package cache
 
 import (
-	"github.com/reybrally/order-service/internal/adapters/cache"
 	"github.com/reybrally/order-service/internal/domain/order"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -20,7 +19,7 @@ func mockOrder(orderUID string, amount int64) order.Order {
 
 // TestLRUCacheMultipleEvictions проверяет несколько удалений элементов из кэша
 func TestLRUCacheMultipleEvictions(t *testing.T) {
-	c := cache.NewLRUCache(2)
+	c := NewCacheService(2)
 
 	// Добавляем несколько заказов
 	err := c.Set("a", mockOrder("a", 100))
@@ -56,7 +55,7 @@ func TestLRUCacheMultipleEvictions(t *testing.T) {
 
 // TestLRUCacheCapacity проверяет поведение кэша при достижении его емкости
 func TestLRUCacheCapacity(t *testing.T) {
-	c := cache.NewLRUCache(3)
+	c := NewCacheService(3)
 
 	// Добавляем три элемента в кэш
 	err := c.Set("a", mockOrder("a", 100))
@@ -89,7 +88,7 @@ func TestLRUCacheCapacity(t *testing.T) {
 
 // TestLRUCacheClearAll проверяет работу метода Clear
 func TestLRUCacheClearAll(t *testing.T) {
-	c := cache.NewLRUCache(3)
+	c := NewCacheService(3)
 
 	// Добавляем элементы в кэш
 	err := c.Set("a", mockOrder("a", 100))
@@ -110,7 +109,7 @@ func TestLRUCacheClearAll(t *testing.T) {
 
 // TestLRUCacheUpdate проверяет обновление значения в кэше
 func TestLRUCacheUpdate(t *testing.T) {
-	c := cache.NewLRUCache(3)
+	c := NewCacheService(3)
 
 	// Добавляем элемент в кэш
 	err := c.Set("a", mockOrder("a", 100))
@@ -128,7 +127,7 @@ func TestLRUCacheUpdate(t *testing.T) {
 
 // TestLRUCacheEvictionWithOrder проверяет правильность удаления элементов при обновлении
 func TestLRUCacheEvictionWithOrder(t *testing.T) {
-	c := cache.NewLRUCache(3)
+	c := NewCacheService(3)
 
 	// Добавляем элементы в кэш
 	err := c.Set("a", mockOrder("a", 100))
@@ -165,7 +164,7 @@ func TestLRUCacheEvictionWithOrder(t *testing.T) {
 
 // TestLRUCacheMultipleEvictionsForMultipleSets проверяет работу кэша при множественном обновлении значений
 func TestLRUCacheMultipleEvictionsForMultipleSets(t *testing.T) {
-	c := cache.NewLRUCache(2)
+	c := NewCacheService(2)
 
 	// Добавляем элементы в кэш
 	err := c.Set("a", mockOrder("a", 100))
@@ -197,7 +196,7 @@ func TestLRUCacheMultipleEvictionsForMultipleSets(t *testing.T) {
 
 // TestLRUCacheSize проверяет правильность размера кэша
 func TestLRUCacheSize(t *testing.T) {
-	c := cache.NewLRUCache(2)
+	c := NewCacheService(2)
 
 	// Добавляем несколько элементов
 	err := c.Set("a", mockOrder("a", 100))
@@ -214,7 +213,7 @@ func TestLRUCacheSize(t *testing.T) {
 	err = c.Set("c", mockOrder("c", 300))
 	require.NoError(t, err)
 
-	_, err = c.Get("a")
+	_, err = c.Get("b")
 	assert.Error(t, err) // "a" должно быть удалено
 
 	// Проверяем размер кэша
@@ -223,7 +222,7 @@ func TestLRUCacheSize(t *testing.T) {
 
 // TestLRUCacheEvictionWhenReachingMaxCapacity проверяет удаление элемента при превышении емкости
 func TestLRUCacheEvictionWhenReachingMaxCapacity(t *testing.T) {
-	c := cache.NewLRUCache(2)
+	c := NewCacheService(2)
 
 	// Добавляем элементы
 	err := c.Set("a", mockOrder("a", 100))

@@ -86,7 +86,6 @@ func (r *OrderRepo) SearchOrders(ctx context.Context, f orders.SearchFilters, p 
 	}
 	sb.WriteString(" ORDER BY " + col + " " + dir)
 
-	// пагинация
 	if p.Limit <= 0 || p.Limit > 100 {
 		p.Limit = 20
 	}

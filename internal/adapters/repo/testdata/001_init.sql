@@ -1,5 +1,3 @@
--- +goose Up
-
 
 CREATE TABLE IF NOT EXISTS orders (
                                       order_uid           TEXT        PRIMARY KEY,
@@ -9,7 +7,7 @@ CREATE TABLE IF NOT EXISTS orders (
                                       internal_signature  TEXT        NOT NULL,
                                       customer_id         TEXT        NOT NULL,
                                       delivery_service    TEXT        NOT NULL,
-                                      shard_key           TEXT        NOT NULL,        -- единый стиль: shard_key (не shardkey)
+                                      shard_key           TEXT        NOT NULL,
                                       sm_id               BIGINT      NOT NULL,
                                       date_created        TIMESTAMPTZ NOT NULL DEFAULT now(),
     oof_shard           BIGINT      NOT NULL
@@ -73,13 +71,14 @@ CREATE TABLE IF NOT EXISTS order_items (
     );
 
 CREATE TABLE IF NOT EXISTS consumer_offsets (
-                                                topic       TEXT NOT NULL,
-                                                partition   INT  NOT NULL,
-                                                group_id    TEXT NOT NULL,
-                                                offset      BIGINT NOT NULL,
-                                                processed_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    PRIMARY KEY (topic, partition, group_id)
+                                                topic         TEXT NOT NULL,
+                                                "partition"   INT  NOT NULL,
+                                                group_id      TEXT NOT NULL,
+                                                "offset"      BIGINT NOT NULL,
+                                                processed_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+    PRIMARY KEY (topic, "partition", group_id)
     );
+
 
 CREATE INDEX IF NOT EXISTS idx_orders_date_created ON orders (date_created DESC);
 CREATE INDEX IF NOT EXISTS idx_orders_track_number ON orders (track_number);
@@ -89,18 +88,3 @@ CREATE INDEX IF NOT EXISTS idx_payments_provider ON payments (provider);
 CREATE INDEX IF NOT EXISTS idx_payments_currency ON payments (currency);
 
 CREATE INDEX IF NOT EXISTS idx_items_track_number ON order_items (track_number);
-
--- +goose Down
-
-DROP INDEX IF EXISTS idx_items_track_number;
-DROP INDEX IF EXISTS idx_payments_currency;
-DROP INDEX IF EXISTS idx_payments_provider;
-DROP INDEX IF EXISTS idx_orders_customer_id;
-DROP INDEX IF EXISTS idx_orders_track_number;
-DROP INDEX IF EXISTS idx_orders_date_created;
-
-DROP TABLE IF EXISTS consumer_offsets;
-DROP TABLE IF EXISTS order_items;
-DROP TABLE IF EXISTS payments;
-DROP TABLE IF EXISTS deliveries;
-DROP TABLE IF EXISTS orders;

@@ -1,6 +1,8 @@
 package cache
 
 import (
+	"sync"
+
 	"github.com/reybrally/order-service/internal/app/orders"
 	"github.com/reybrally/order-service/internal/domain/order"
 )
@@ -8,107 +10,149 @@ import (
 type lruNode struct {
 	key   string
 	value order.Order
-	next  *lruNode
 	prev  *lruNode
+	next  *lruNode
 }
 
-type LRUCache struct {
-	head     *lruNode // наименее актуальная нода
-	tail     *lruNode // наиболиее актуальная нода
+// CacheService — потокобезопасный LRU.
+type CacheService struct {
+	mu       sync.Mutex
 	cache    map[string]*lruNode
+	head     *lruNode // наименее актуальная (LRA)
+	tail     *lruNode // наиболее актуальная (MRU)
 	capacity int
 }
 
-func NewLRUCache(capacity int) *LRUCache {
-	return &LRUCache{
-		head:     nil,
-		tail:     nil,
-		cache:    make(map[string]*lruNode),
+func NewCacheService(capacity int) *CacheService {
+	if capacity <= 0 {
+		capacity = 1
+	}
+	return &CacheService{
+		cache:    make(map[string]*lruNode, capacity),
 		capacity: capacity,
 	}
 }
 
-// Set устанавливает новое значение существующей ноде либо же добавляет новую к существующим
-func (c *LRUCache) Set(key string, value order.Order) error {
+// Set: вставить/обновить и пометить как MRU.
+func (c *CacheService) Set(key string, value order.Order) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	// Обновление существующей ноды
 	if nd, ok := c.cache[key]; ok {
-		c.cache[key].value = value
-		c.changeTail(nd)
+		nd.value = value
+		c.moveToTail(nd)
 		return nil
 	}
-	nd := newLruNode(key, value)
-	if c.capacity == len(c.cache) {
-		delete(c.cache, c.head.key)
-		c.deleteNode(c.head)
 
+	// Эвикт при заполнении
+	if len(c.cache) >= c.capacity {
+		c.evictHead() // корректно удалит и из списка, и из map
 	}
-	c.addCache(nd)
-	c.cache[nd.key] = nd
-	return nil
 
+	// Вставка новой ноды в хвост (MRU)
+	nd := &lruNode{key: key, value: value}
+	c.appendToTail(nd)
+	c.cache[key] = nd
+	return nil
 }
 
-func (c *LRUCache) Get(key string) (order.Order, error) {
+// Get: получить и пометить как MRU. На промах — orders.ErrNotFound.
+func (c *CacheService) Get(key string) (order.Order, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
 	nd, ok := c.cache[key]
 	if !ok {
 		return order.Order{}, orders.ErrNotFound
 	}
-	c.changeTail(nd)
+	c.moveToTail(nd)
 	return nd.value, nil
-
 }
 
-func (c *LRUCache) Clear() {
-	c.cache = make(map[string]*lruNode)
+// Delete: удалить ключ. Если нет — orders.ErrNotFound.
+func (c *CacheService) Delete(key string) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	nd, ok := c.cache[key]
+	if !ok {
+		return orders.ErrNotFound
+	}
+	c.unlink(nd)
+	delete(c.cache, key)
+	return nil
+}
+
+func (c *CacheService) Clear() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	c.cache = make(map[string]*lruNode, c.capacity)
 	c.head = nil
 	c.tail = nil
 }
 
-// helpers
-
-// newLruNode создает новую ноду кеша
-func newLruNode(key string, value order.Order) *lruNode {
-	return &lruNode{
-		key:   key,
-		value: value,
-	}
+// Доп. удобства (по желанию)
+func (c *CacheService) Len() int {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return len(c.cache)
 }
+func (c *CacheService) Cap() int { return c.capacity }
 
-// addCache добавляет ноду в список нод лру кеша
-func (c *LRUCache) addCache(nd *lruNode) {
-	if c.head == nil {
+// ===== внутренняя работа со списком =====
+
+func (c *CacheService) appendToTail(nd *lruNode) {
+	if c.tail == nil { // пустой список
 		c.head = nd
 		c.tail = nd
 		return
 	}
-	c.tail.next = nd
 	nd.prev = c.tail
+	c.tail.next = nd
 	c.tail = nd
 }
 
-func (c *LRUCache) deleteNode(nd *lruNode) {
+func (c *CacheService) moveToTail(nd *lruNode) {
+	if nd == c.tail { // уже MRU
+		return
+	}
+	// сначала отцепить из текущей позиции
+	c.unlink(nd)
+	// а затем приложить к хвосту
+	c.appendToTail(nd)
+}
+
+func (c *CacheService) evictHead() {
+	if c.head == nil {
+		return
+	}
+	evicted := c.head
+	c.unlink(evicted)
+	delete(c.cache, evicted.key)
+}
+
+func (c *CacheService) unlink(nd *lruNode) {
 	if nd == nil {
 		return
 	}
-	if nd == c.head {
-		c.head = c.head.next
-		c.head.prev = nil
-		return
-	}
-	if nd == c.tail {
-		nd.prev.next = nil
-		c.tail = nd.prev
-		nd.prev = nil
-		return
-	}
-	nd.prev.next = nd.next
-	nd.next.prev = nd.prev
-	nd = nil
-}
 
-func (c *LRUCache) changeTail(nd *lruNode) {
-	if c.head == nd && c.tail == nd {
-		return
+	// связываем соседей между собой
+	if nd.prev != nil {
+		nd.prev.next = nd.next
+	} else {
+		// nd был головой
+		c.head = nd.next
 	}
-	c.deleteNode(nd)
-	c.addCache(nd)
+	if nd.next != nil {
+		nd.next.prev = nd.prev
+	} else {
+		// nd был хвостом
+		c.tail = nd.prev
+	}
+
+	// зануляем ссылки ноды (на всякий случай)
+	nd.prev = nil
+	nd.next = nil
 }
