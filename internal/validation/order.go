@@ -33,9 +33,6 @@ func isValidDate(date time.Time) bool {
 }
 
 func validateOrderFields(order domain.Order) error {
-	if order.OrderUID == "" {
-		return errors.New("order uid is required")
-	}
 	if order.DeliveryService == "" {
 		return errors.New("delivery service is required")
 	}
