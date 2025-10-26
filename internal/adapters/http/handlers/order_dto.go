@@ -18,6 +18,8 @@ type OrderUpsertRequest struct {
 	SmID            int64   `json:"sm_id"`
 	OofShard        int64   `json:"oof_shard"`
 
+	DateCreatedRFC string `json:"date_created,omitempty"`
+
 	Delivery DeliveryDTO `json:"delivery"`
 	Payment  PaymentDTO  `json:"payment"`
 	Items    []ItemDTO   `json:"items"`
@@ -61,11 +63,12 @@ type ItemDTO struct {
 }
 
 func (r OrderUpsertRequest) ToModel() (order.Order, error) {
-	// Лёгкая синтаксическая проверка «обязательных» (бизнес-валидация — в твоём validation пакете)
+	// Лёгкая синтаксическая проверка «обязательных» полей
 	if r.TrackNumber == "" || r.Entry == "" || r.Locale == "" || r.CustomerID == "" || r.DeliveryService == "" {
 		return order.Order{}, errors.New("missing required fields")
 	}
-	// Парсим время оплаты (клиент присылает строкой RFC3339)
+
+	// Парсим дату из JSON для payment_dt
 	var payTime time.Time
 	if r.Payment.PaymentDtRFC != "" {
 		t, err := time.Parse(time.RFC3339, r.Payment.PaymentDtRFC)
@@ -73,6 +76,18 @@ func (r OrderUpsertRequest) ToModel() (order.Order, error) {
 			return order.Order{}, errors.New("invalid payment_dt format (want RFC3339)")
 		}
 		payTime = t
+	}
+
+	// Парсим дату для DateCreated
+	var createdAt time.Time
+	if r.DateCreatedRFC != "" {
+		t, err := time.Parse(time.RFC3339, r.DateCreatedRFC)
+		if err != nil {
+			return order.Order{}, errors.New("invalid date_created (want RFC3339)")
+		}
+		createdAt = t
+	} else {
+		createdAt = time.Now().UTC() // если дата не передана — ставим текущее время
 	}
 
 	out := order.Order{
@@ -108,7 +123,8 @@ func (r OrderUpsertRequest) ToModel() (order.Order, error) {
 			GoodsTotal:   r.Payment.GoodsTotal,
 			CustomFee:    r.Payment.CustomFee,
 		},
-		Items: make([]order.Item, 0, len(r.Items)),
+		DateCreated: createdAt, // дата будет установлена здесь
+		Items:       make([]order.Item, 0, len(r.Items)),
 	}
 
 	for _, it := range r.Items {

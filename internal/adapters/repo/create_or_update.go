@@ -11,23 +11,22 @@ import (
 
 const (
 	qOrders = `INSERT INTO orders (
-		order_uid, track_number, entry, locale, internal_signature, customer_id,
-		delivery_service, shard_key, sm_id, date_created, oof_shard
-	) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
-	ON CONFLICT (order_uid) DO UPDATE SET
-		track_number       = EXCLUDED.track_number,
-		entry              = EXCLUDED.entry,
-		locale             = EXCLUDED.locale,
-		internal_signature = EXCLUDED.internal_signature,
-		customer_id        = EXCLUDED.customer_id,
-		delivery_service   = EXCLUDED.delivery_service,
-		shard_key          = EXCLUDED.shard_key,
-		sm_id              = EXCLUDED.sm_id,
-		date_created       = EXCLUDED.date_created,
-		oof_shard          = EXCLUDED.oof_shard
-	RETURNING
-		order_uid, track_number, entry, locale, internal_signature, customer_id,
-		delivery_service, shard_key, sm_id, date_created, oof_shard;`
+    order_uid, track_number, entry, locale, internal_signature, customer_id,
+    delivery_service, shard_key, sm_id, oof_shard
+) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+ON CONFLICT (order_uid) DO UPDATE SET
+    track_number       = EXCLUDED.track_number,
+    entry              = EXCLUDED.entry,
+    locale             = EXCLUDED.locale,
+    internal_signature = EXCLUDED.internal_signature,
+    customer_id        = EXCLUDED.customer_id,
+    delivery_service   = EXCLUDED.delivery_service,
+    shard_key          = EXCLUDED.shard_key,
+    sm_id              = EXCLUDED.sm_id,
+    oof_shard          = EXCLUDED.oof_shard
+RETURNING
+    order_uid, track_number, entry, locale, internal_signature, customer_id,
+    delivery_service, shard_key, sm_id, date_created, oof_shard;`
 
 	qDelivery = `
 	INSERT INTO deliveries (
@@ -61,21 +60,21 @@ const (
 	RETURNING chrt_id, track_number, price, rid, item_name, sale, item_size, total_price, nm_id, brand, status;`
 
 	qPayment = `
-	INSERT INTO payments (
-		transaction, order_uid, request_id, currency, provider, amount, payment_dt, bank, delivery_cost, goods_total, custom_fee
-	) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
-	ON CONFLICT (transaction) DO UPDATE SET
-		order_uid     = EXCLUDED.order_uid,
-		request_id    = EXCLUDED.request_id,
-		currency      = EXCLUDED.currency,
-		provider      = EXCLUDED.provider,
-		amount        = EXCLUDED.amount,
-		payment_dt    = EXCLUDED.payment_dt,
-		bank          = EXCLUDED.bank,
-		delivery_cost = EXCLUDED.delivery_cost,
-		goods_total   = EXCLUDED.goods_total,
-		custom_fee    = EXCLUDED.custom_fee
-	RETURNING transaction, request_id, currency, provider, amount, payment_dt, bank, delivery_cost, goods_total, custom_fee;`
+INSERT INTO payments (
+    order_uid, transaction, request_id, currency, provider, amount, payment_dt, bank, delivery_cost, goods_total, custom_fee
+) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+ON CONFLICT (order_uid) DO UPDATE SET
+    transaction   = EXCLUDED.transaction,
+    request_id    = EXCLUDED.request_id,
+    currency      = EXCLUDED.currency,
+    provider      = EXCLUDED.provider,
+    amount        = EXCLUDED.amount,
+    payment_dt    = EXCLUDED.payment_dt,
+    bank          = EXCLUDED.bank,
+    delivery_cost = EXCLUDED.delivery_cost,
+    goods_total   = EXCLUDED.goods_total,
+    custom_fee    = EXCLUDED.custom_fee
+RETURNING transaction, request_id, currency, provider, amount, payment_dt, bank, delivery_cost, goods_total, custom_fee;`
 )
 
 func (r *OrderRepo) CreateOrUpdateOrder(ctx context.Context, o order.Order) (order.Order, error) {
@@ -90,7 +89,7 @@ func (r *OrderRepo) CreateOrUpdateOrder(ctx context.Context, o order.Order) (ord
 	var orderRow OrderRow
 	if err := tx.QueryRow(ctx, qOrders,
 		o.OrderUID, o.TrackNumber, o.Entry, o.Locale, o.InternalSignature, o.CustomerId,
-		o.DeliveryService, o.ShardKey, o.SmId, o.DateCreated, o.OofShard,
+		o.DeliveryService, o.ShardKey, o.SmId, o.OofShard,
 	).Scan(&orderRow.OrderUID, &orderRow.TrackNumber, &orderRow.Entry, &orderRow.Locale,
 		&orderRow.InternalSignature, &orderRow.CustomerId, &orderRow.DeliveryService,
 		&orderRow.ShardKey, &orderRow.SmId, &orderRow.DateCreated, &orderRow.OofShard); err != nil {
@@ -133,7 +132,7 @@ func (r *OrderRepo) CreateOrUpdateOrder(ctx context.Context, o order.Order) (ord
 
 	var pRow PaymentRow
 	if err := tx.QueryRow(ctx, qPayment,
-		o.Payment.Transaction, o.OrderUID, o.Payment.RequestId, o.Payment.Currency,
+		o.OrderUID, o.Payment.Transaction, o.Payment.RequestId, o.Payment.Currency,
 		o.Payment.Provider, o.Payment.Amount, o.Payment.PaymentDt, o.Payment.Bank,
 		o.Payment.DeliveryCost, o.Payment.GoodsTotal, o.Payment.CustomFee,
 	).Scan(&pRow.Transaction, &pRow.RequestID, &pRow.Currency, &pRow.Provider, &pRow.Amount,
@@ -234,6 +233,23 @@ func (r *OrderRepo) CreateOrUpdateOrder(ctx context.Context, o order.Order) (ord
 			return order.Order{}, err
 		}
 		ItemRows = append(ItemRows, itemRow)
+	}
+	if len(o.Items) == 0 {
+		if _, err := tx.Exec(ctx, `DELETE FROM order_items WHERE order_uid = $1`, o.OrderUID); err != nil {
+			return order.Order{}, err
+		}
+	} else {
+		ids := make([]string, 0, len(o.Items))
+		for i := range o.Items {
+			ids = append(ids, o.Items[i].ChrtId)
+		}
+		if _, err := tx.Exec(ctx, `
+        DELETE FROM order_items
+        WHERE order_uid = $1
+          AND chrt_id NOT IN (SELECT unnest($2::text[]))
+    `, o.OrderUID, ids); err != nil {
+			return order.Order{}, err
+		}
 	}
 
 	if err := tx.Commit(ctx); err != nil {

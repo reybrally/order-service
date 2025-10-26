@@ -9,10 +9,7 @@ import (
 )
 
 // SearchOrders — GET /orders/search
-// Query-параметры (все опциональны):
-// created_from, created_to — RFC3339; order_uid, track_number, customer_id, provider, currency, q
-// sort_by=[date_created|customer_id|track_number|amount], sort_dir=[asc|desc]
-// limit, offset — числа
+
 func (h *OrderHandlers) SearchOrders(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 

@@ -7,7 +7,7 @@ import (
 	"net/http"
 )
 
-func (h *OrderHandlers) deleteHandler(w http.ResponseWriter, r *http.Request) {
+func (h *OrderHandlers) DeleteHandler(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	if id == "" {
 		writeError(w, http.StatusBadRequest, "id can't be empty")
