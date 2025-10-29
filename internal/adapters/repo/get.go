@@ -5,6 +5,8 @@ import (
 	"errors"
 	"github.com/reybrally/order-service/internal/app/orders"
 	"github.com/reybrally/order-service/internal/domain/order"
+	"github.com/reybrally/order-service/internal/logging"
+	"github.com/sirupsen/logrus"
 	"time"
 )
 
@@ -60,12 +62,15 @@ WHERE o.order_uid = $1;
 `
 
 func (r OrderRepo) GetOrder(ctx context.Context, uid string) (order.Order, error) {
+	logging.LogInfo("Attempting to fetch order by order_uid", logrus.Fields{"order_uid": uid})
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
 	rows, err := r.repo.Query(ctx, qFindFullOrderByUID, uid)
 	if err != nil {
+		logging.LogError("Error executing query to fetch order", err, logrus.Fields{"order_uid": uid})
 		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) || ctx.Err() != nil {
+			logging.LogError("Context timeout or cancellation while fetching order", err, logrus.Fields{"order_uid": uid})
 			return order.Order{}, orders.ErrTimeout
 		}
 		return order.Order{}, err
@@ -106,7 +111,9 @@ func (r OrderRepo) GetOrder(ctx context.Context, uid string) (order.Order, error
 			&pTransaction, &pRequestID, &pCurrency, &pProvider, &pAmount, &pPaymentDt, &pBank, &pDeliveryCost, &pGoodsTotal, &pCustomFee,
 			&iChrtID, &iItemTrackNumber, &iPrice, &iRid, &iName, &iSale, &iSize, &iTotalPrice, &iNmID, &iBrand, &iStatus,
 		); err != nil {
+			logging.LogError("Error scanning row for order", err, logrus.Fields{"order_uid": uid})
 			if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) || ctx.Err() != nil {
+				logging.LogError("Context timeout or cancellation while scanning row", err, logrus.Fields{"order_uid": uid})
 				return order.Order{}, orders.ErrTimeout
 			}
 			return order.Order{}, err
@@ -167,14 +174,19 @@ func (r OrderRepo) GetOrder(ctx context.Context, uid string) (order.Order, error
 		}
 	}
 	if err := rows.Err(); err != nil {
+		logging.LogError("Error iterating over rows", err, logrus.Fields{"order_uid": uid})
 		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) || ctx.Err() != nil {
+			logging.LogError("Context timeout or cancellation while iterating rows", err, logrus.Fields{"order_uid": uid})
 			return order.Order{}, orders.ErrTimeout
 		}
 		return order.Order{}, err
 	}
 	if !found {
+		logging.LogError("Order not found", nil, logrus.Fields{"order_uid": uid})
 		return order.Order{}, orders.ErrNotFound
 	}
+
+	logging.LogInfo("Order fetched successfully", logrus.Fields{"order_uid": uid})
 	return out, nil
 }
 

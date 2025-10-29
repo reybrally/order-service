@@ -3,6 +3,8 @@ package repo
 import (
 	"context"
 	"errors"
+	"github.com/reybrally/order-service/internal/logging"
+	"github.com/sirupsen/logrus"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -80,11 +82,13 @@ RETURNING transaction, request_id, currency, provider, amount, payment_dt, bank,
 )
 
 func (r *OrderRepo) CreateOrUpdateOrder(ctx context.Context, o order.Order) (order.Order, error) {
+	logging.LogInfo("Attempting to create or update order", logrus.Fields{"order_uid": o.OrderUID})
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
 	tx, err := r.repo.Begin(ctx)
 	if err != nil {
+		logging.LogError("Error starting transaction", err, logrus.Fields{"order_uid": o.OrderUID})
 		return order.Order{}, err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
@@ -98,6 +102,8 @@ func (r *OrderRepo) CreateOrUpdateOrder(ctx context.Context, o order.Order) (ord
 		&orderRow.InternalSignature, &orderRow.CustomerId, &orderRow.DeliveryService,
 		&orderRow.ShardKey, &orderRow.SmId, &orderRow.DateCreated, &orderRow.OofShard,
 	); err != nil {
+		logging.LogError("Error executing order query", err, logrus.Fields{"order_uid": o.OrderUID})
+
 		if errors.Is(err, pgx.ErrNoRows) {
 			return order.Order{}, orders.ErrUnexpected
 		}
@@ -105,8 +111,10 @@ func (r *OrderRepo) CreateOrUpdateOrder(ctx context.Context, o order.Order) (ord
 		if errors.As(err, &pgerr) {
 			switch pgerr.Code {
 			case "23514":
+				logging.LogError("Invalid data error during order creation", err, logrus.Fields{"order_uid": o.OrderUID})
 				return order.Order{}, orders.ErrInvalidData
 			case "40001":
+				logging.LogError("Transaction retry error", err, logrus.Fields{"order_uid": o.OrderUID})
 				return order.Order{}, orders.ErrRetry
 			}
 		}
@@ -122,6 +130,7 @@ func (r *OrderRepo) CreateOrUpdateOrder(ctx context.Context, o order.Order) (ord
 		&deliveryRow.Name, &deliveryRow.Phone, &deliveryRow.Zip, &deliveryRow.City,
 		&deliveryRow.Address, &deliveryRow.Region, &deliveryRow.Email,
 	); err != nil {
+		logging.LogError("Error executing delivery query", err, logrus.Fields{"order_uid": o.OrderUID})
 		if errors.Is(err, pgx.ErrNoRows) {
 			return order.Order{}, orders.ErrUnexpected
 		}
@@ -129,8 +138,10 @@ func (r *OrderRepo) CreateOrUpdateOrder(ctx context.Context, o order.Order) (ord
 		if errors.As(err, &pgerr) {
 			switch pgerr.Code {
 			case "23503":
+				logging.LogError("Invalid reference error during delivery creation", err, logrus.Fields{"order_uid": o.OrderUID})
 				return order.Order{}, orders.ErrInvalidReference
 			case "23514":
+				logging.LogError("Invalid data error during delivery creation", err, logrus.Fields{"order_uid": o.OrderUID})
 				return order.Order{}, orders.ErrInvalidData
 			}
 		}
@@ -146,6 +157,7 @@ func (r *OrderRepo) CreateOrUpdateOrder(ctx context.Context, o order.Order) (ord
 		&pRow.Transaction, &pRow.RequestID, &pRow.Currency, &pRow.Provider, &pRow.Amount,
 		&pRow.PaymentDt, &pRow.Bank, &pRow.DeliveryCost, &pRow.GoodsTotal, &pRow.CustomFee,
 	); err != nil {
+		logging.LogError("Error executing payment query", err, logrus.Fields{"order_uid": o.OrderUID})
 		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) || ctx.Err() != nil {
 			return order.Order{}, orders.ErrTimeout
 		}
@@ -156,12 +168,16 @@ func (r *OrderRepo) CreateOrUpdateOrder(ctx context.Context, o order.Order) (ord
 		if errors.As(err, &pgerr) {
 			switch pgerr.Code {
 			case "23503":
+				logging.LogError("Invalid reference error during payment creation", err, logrus.Fields{"order_uid": o.OrderUID})
 				return order.Order{}, orders.ErrInvalidReference
 			case "23514", "23502", "22001", "22P02":
+				logging.LogError("Invalid data error during payment creation", err, logrus.Fields{"order_uid": o.OrderUID})
 				return order.Order{}, orders.ErrInvalidData
 			case "40001", "40P01":
+				logging.LogError("Transaction retryable error during payment creation", err, logrus.Fields{"order_uid": o.OrderUID})
 				return order.Order{}, orders.ErrRetryable
 			case "23505":
+				logging.LogError("Conflict error during payment creation", err, logrus.Fields{"order_uid": o.OrderUID})
 				return order.Order{}, orders.ErrConflict
 			}
 		}
@@ -198,22 +214,28 @@ func (r *OrderRepo) CreateOrUpdateOrder(ctx context.Context, o order.Order) (ord
 			&ir.Brand,
 			&ir.Status,
 		); err != nil {
+			logging.LogError("Error executing item query", err, logrus.Fields{"order_uid": o.OrderUID, "item_chrt_id": o.Items[i].ChrtId})
 			if errors.Is(err, pgx.ErrNoRows) {
 				return order.Order{}, orders.ErrUnexpected
 			}
 			if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) || ctx.Err() != nil {
+				logging.LogError("Context timeout or cancellation during item query", err, logrus.Fields{"order_uid": o.OrderUID, "item_chrt_id": o.Items[i].ChrtId})
 				return order.Order{}, orders.ErrTimeout
 			}
 			var pgerr *pgconn.PgError
 			if errors.As(err, &pgerr) {
 				switch pgerr.Code {
 				case "23503":
+					logging.LogError("Invalid reference error during item creation", err, logrus.Fields{"order_uid": o.OrderUID, "item_chrt_id": o.Items[i].ChrtId})
 					return order.Order{}, orders.ErrInvalidReference
 				case "23514", "23502", "22001", "22P02":
+					logging.LogError("Invalid data error during item creation", err, logrus.Fields{"order_uid": o.OrderUID, "item_chrt_id": o.Items[i].ChrtId})
 					return order.Order{}, orders.ErrInvalidData
 				case "23505":
+					logging.LogError("Conflict error during item creation", err, logrus.Fields{"order_uid": o.OrderUID, "item_chrt_id": o.Items[i].ChrtId})
 					return order.Order{}, orders.ErrConflict
 				case "40001", "40P01":
+					logging.LogError("Transaction retryable error during item creation", err, logrus.Fields{"order_uid": o.OrderUID, "item_chrt_id": o.Items[i].ChrtId})
 					return order.Order{}, orders.ErrRetryable
 				}
 			}
@@ -224,6 +246,7 @@ func (r *OrderRepo) CreateOrUpdateOrder(ctx context.Context, o order.Order) (ord
 
 	if len(o.Items) == 0 {
 		if _, err := tx.Exec(ctx, `DELETE FROM order_items WHERE order_uid = $1`, o.OrderUID); err != nil {
+			logging.LogError("Error cleaning up order items", err, logrus.Fields{"order_uid": o.OrderUID})
 			return order.Order{}, err
 		}
 	} else {
@@ -236,11 +259,13 @@ func (r *OrderRepo) CreateOrUpdateOrder(ctx context.Context, o order.Order) (ord
 			WHERE order_uid = $1
 			  AND NOT (chrt_id = ANY($2::text[]))
 		`, o.OrderUID, ids); err != nil {
+			logging.LogError("Error deleting outdated order items", err, logrus.Fields{"order_uid": o.OrderUID})
 			return order.Order{}, err
 		}
 	}
 
 	if err := tx.Commit(ctx); err != nil {
+		logging.LogError("Error committing transaction", err, logrus.Fields{"order_uid": o.OrderUID})
 		return order.Order{}, err
 	}
 
@@ -286,6 +311,8 @@ func (r *OrderRepo) CreateOrUpdateOrder(ctx context.Context, o order.Order) (ord
 			Status:      it.Status,
 		})
 	}
+
+	logging.LogInfo("Order successfully created or updated", logrus.Fields{"order_uid": o.OrderUID})
 
 	return out, nil
 }

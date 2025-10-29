@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"github.com/reybrally/order-service/internal/app/orders"
 	"github.com/reybrally/order-service/internal/domain/order"
+	"github.com/reybrally/order-service/internal/logging"
+	"github.com/sirupsen/logrus"
 	"strings"
 )
 
@@ -16,6 +18,11 @@ var sortWhitelist = map[string]string{
 }
 
 func (r *OrderRepo) SearchOrders(ctx context.Context, f orders.SearchFilters, p orders.PageRequest) ([]order.Order, error) {
+	logging.LogInfo("Starting order search", logrus.Fields{
+		"filters":      f,
+		"page_request": p,
+	})
+
 	var (
 		sb   strings.Builder
 		args []any
@@ -100,6 +107,7 @@ func (r *OrderRepo) SearchOrders(ctx context.Context, f orders.SearchFilters, p 
 
 	rows, err := r.repo.Query(ctx, sb.String(), args...)
 	if err != nil {
+		logging.LogError("Error executing search query", err, logrus.Fields{"query": sb.String(), "args": args})
 		return nil, err
 	}
 	defer rows.Close()
@@ -108,21 +116,29 @@ func (r *OrderRepo) SearchOrders(ctx context.Context, f orders.SearchFilters, p 
 	for rows.Next() {
 		var id string
 		if err := rows.Scan(&id); err != nil {
+			logging.LogError("Error scanning row in search query", err, logrus.Fields{"query": sb.String(), "args": args})
 			return nil, err
 		}
 		uids = append(uids, id)
 	}
 	if err := rows.Err(); err != nil {
+		logging.LogError("Error iterating over rows", err, logrus.Fields{"query": sb.String(), "args": args})
 		return nil, err
 	}
+
+	logging.LogInfo("Found order_uids", logrus.Fields{"order_uids": uids})
 
 	out := make([]order.Order, 0, len(uids))
 	for _, id := range uids {
 		o, err := r.GetOrder(ctx, id)
 		if err != nil {
+			logging.LogError("Error fetching order by order_uid", err, logrus.Fields{"order_uid": id})
 			return nil, err
 		}
 		out = append(out, o)
 	}
+	logging.LogInfo("Search completed successfully", logrus.Fields{
+		"found_orders": len(out),
+	})
 	return out, nil
 }
