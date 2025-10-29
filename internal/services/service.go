@@ -61,8 +61,6 @@ func (serv *OrderService) DeleteOrder(ctx context.Context, id string) error {
 
 // отдает список заказов по фильтрам и пагинации
 func (serv *OrderService) SearchOrder(ctx context.Context, filters orders.SearchFilters, req orders.PageRequest) ([]domain.Order, error) {
-	orders.NormalizeSearchFilters(&filters)
-	orders.NormalizeRequest(&req)
 	return serv.repo.SearchOrders(ctx, filters, req)
 }
 

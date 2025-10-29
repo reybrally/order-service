@@ -3,8 +3,10 @@ package repo
 import (
 	"context"
 	"errors"
+
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
+
 	"github.com/reybrally/order-service/internal/app/orders"
 	"github.com/reybrally/order-service/internal/domain/order"
 )
@@ -29,57 +31,58 @@ RETURNING
     delivery_service, shard_key, sm_id, date_created, oof_shard;`
 
 	qDelivery = `
-	INSERT INTO deliveries (
-		order_uid, delivery_name, phone, zip, city, address, region, email
-	) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
-	ON CONFLICT (order_uid) DO UPDATE SET
-		delivery_name = EXCLUDED.delivery_name,
-		phone         = EXCLUDED.phone,
-		zip           = EXCLUDED.zip,
-		city          = EXCLUDED.city,
-		address       = EXCLUDED.address,
-		region        = EXCLUDED.region,
-		email         = EXCLUDED.email
-	RETURNING delivery_name, phone, zip, city, address, region, email;`
+INSERT INTO deliveries (
+  order_uid, delivery_name, phone, zip, city, address, region, email
+) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+ON CONFLICT (order_uid) DO UPDATE SET
+  delivery_name = EXCLUDED.delivery_name,
+  phone         = EXCLUDED.phone,
+  zip           = EXCLUDED.zip,
+  city          = EXCLUDED.city,
+  address       = EXCLUDED.address,
+  region        = EXCLUDED.region,
+  email         = EXCLUDED.email
+RETURNING delivery_name, phone, zip, city, address, region, email;`
 
 	qItem = `
-	INSERT INTO order_items (
-		order_uid, chrt_id, track_number, price, rid, item_name, sale, item_size, total_price, nm_id, brand, status
-	) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
-	ON CONFLICT (order_uid, chrt_id) DO UPDATE SET
-		track_number = EXCLUDED.track_number,
-		price        = EXCLUDED.price,
-		rid          = EXCLUDED.rid,
-		item_name    = EXCLUDED.item_name,
-		sale         = EXCLUDED.sale,
-		item_size    = EXCLUDED.item_size,
-		total_price  = EXCLUDED.total_price,
-		nm_id        = EXCLUDED.nm_id,
-		brand        = EXCLUDED.brand,
-		status       = EXCLUDED.status
-	RETURNING chrt_id, track_number, price, rid, item_name, sale, item_size, total_price, nm_id, brand, status;`
+INSERT INTO order_items (
+  order_uid, chrt_id, track_number, price, rid, item_name, sale, item_size, total_price, nm_id, brand, status
+) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+ON CONFLICT (order_uid, chrt_id) DO UPDATE SET
+  track_number = EXCLUDED.track_number,
+  price        = EXCLUDED.price,
+  rid          = EXCLUDED.rid,
+  item_name    = EXCLUDED.item_name,
+  sale         = EXCLUDED.sale,
+  item_size    = EXCLUDED.item_size,
+  total_price  = EXCLUDED.total_price,
+  nm_id        = EXCLUDED.nm_id,
+  brand        = EXCLUDED.brand,
+  status       = EXCLUDED.status
+RETURNING chrt_id, track_number, price, rid, item_name, sale, item_size, total_price, nm_id, brand, status;`
 
 	qPayment = `
 INSERT INTO payments (
-    order_uid, transaction, request_id, currency, provider, amount, payment_dt, bank, delivery_cost, goods_total, custom_fee
+  order_uid, transaction, request_id, currency, provider, amount, payment_dt, bank, delivery_cost, goods_total, custom_fee
 ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
 ON CONFLICT (order_uid) DO UPDATE SET
-    transaction   = EXCLUDED.transaction,
-    request_id    = EXCLUDED.request_id,
-    currency      = EXCLUDED.currency,
-    provider      = EXCLUDED.provider,
-    amount        = EXCLUDED.amount,
-    payment_dt    = EXCLUDED.payment_dt,
-    bank          = EXCLUDED.bank,
-    delivery_cost = EXCLUDED.delivery_cost,
-    goods_total   = EXCLUDED.goods_total,
-    custom_fee    = EXCLUDED.custom_fee
+  transaction   = EXCLUDED.transaction,
+  request_id    = EXCLUDED.request_id,
+  currency      = EXCLUDED.currency,
+  provider      = EXCLUDED.provider,
+  amount        = EXCLUDED.amount,
+  payment_dt    = EXCLUDED.payment_dt,
+  bank          = EXCLUDED.bank,
+  delivery_cost = EXCLUDED.delivery_cost,
+  goods_total   = EXCLUDED.goods_total,
+  custom_fee    = EXCLUDED.custom_fee
 RETURNING transaction, request_id, currency, provider, amount, payment_dt, bank, delivery_cost, goods_total, custom_fee;`
 )
 
 func (r *OrderRepo) CreateOrUpdateOrder(ctx context.Context, o order.Order) (order.Order, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+
 	tx, err := r.repo.Begin(ctx)
 	if err != nil {
 		return order.Order{}, err
@@ -90,9 +93,11 @@ func (r *OrderRepo) CreateOrUpdateOrder(ctx context.Context, o order.Order) (ord
 	if err := tx.QueryRow(ctx, qOrders,
 		o.OrderUID, o.TrackNumber, o.Entry, o.Locale, o.InternalSignature, o.CustomerId,
 		o.DeliveryService, o.ShardKey, o.SmId, o.OofShard,
-	).Scan(&orderRow.OrderUID, &orderRow.TrackNumber, &orderRow.Entry, &orderRow.Locale,
+	).Scan(
+		&orderRow.OrderUID, &orderRow.TrackNumber, &orderRow.Entry, &orderRow.Locale,
 		&orderRow.InternalSignature, &orderRow.CustomerId, &orderRow.DeliveryService,
-		&orderRow.ShardKey, &orderRow.SmId, &orderRow.DateCreated, &orderRow.OofShard); err != nil {
+		&orderRow.ShardKey, &orderRow.SmId, &orderRow.DateCreated, &orderRow.OofShard,
+	); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return order.Order{}, orders.ErrUnexpected
 		}
@@ -113,15 +118,17 @@ func (r *OrderRepo) CreateOrUpdateOrder(ctx context.Context, o order.Order) (ord
 		o.OrderUID,
 		o.Delivery.Name, o.Delivery.Phone, o.Delivery.Zip, o.Delivery.City,
 		o.Delivery.Address, o.Delivery.Region, o.Delivery.Email,
-	).Scan(&deliveryRow.Name, &deliveryRow.Phone, &deliveryRow.Zip, &deliveryRow.City,
-		&deliveryRow.Address, &deliveryRow.Region, &deliveryRow.Email); err != nil {
+	).Scan(
+		&deliveryRow.Name, &deliveryRow.Phone, &deliveryRow.Zip, &deliveryRow.City,
+		&deliveryRow.Address, &deliveryRow.Region, &deliveryRow.Email,
+	); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return order.Order{}, orders.ErrUnexpected
 		}
 		var pgerr *pgconn.PgError
 		if errors.As(err, &pgerr) {
 			switch pgerr.Code {
-			case "23503": // FK violation
+			case "23503":
 				return order.Order{}, orders.ErrInvalidReference
 			case "23514":
 				return order.Order{}, orders.ErrInvalidData
@@ -135,8 +142,10 @@ func (r *OrderRepo) CreateOrUpdateOrder(ctx context.Context, o order.Order) (ord
 		o.OrderUID, o.Payment.Transaction, o.Payment.RequestId, o.Payment.Currency,
 		o.Payment.Provider, o.Payment.Amount, o.Payment.PaymentDt, o.Payment.Bank,
 		o.Payment.DeliveryCost, o.Payment.GoodsTotal, o.Payment.CustomFee,
-	).Scan(&pRow.Transaction, &pRow.RequestID, &pRow.Currency, &pRow.Provider, &pRow.Amount,
-		&pRow.PaymentDt, &pRow.Bank, &pRow.DeliveryCost, &pRow.GoodsTotal, &pRow.CustomFee); err != nil {
+	).Scan(
+		&pRow.Transaction, &pRow.RequestID, &pRow.Currency, &pRow.Provider, &pRow.Amount,
+		&pRow.PaymentDt, &pRow.Bank, &pRow.DeliveryCost, &pRow.GoodsTotal, &pRow.CustomFee,
+	); err != nil {
 		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) || ctx.Err() != nil {
 			return order.Order{}, orders.ErrTimeout
 		}
@@ -148,30 +157,21 @@ func (r *OrderRepo) CreateOrUpdateOrder(ctx context.Context, o order.Order) (ord
 			switch pgerr.Code {
 			case "23503":
 				return order.Order{}, orders.ErrInvalidReference
-			case "23514":
+			case "23514", "23502", "22001", "22P02":
 				return order.Order{}, orders.ErrInvalidData
-			case "23502":
-				return order.Order{}, orders.ErrInvalidData
-			case "22001":
-				return order.Order{}, orders.ErrInvalidData
-			case "22P02":
-				return order.Order{}, orders.ErrInvalidData
-			case "40001",
-				"40P01":
+			case "40001", "40P01":
 				return order.Order{}, orders.ErrRetryable
 			case "23505":
 				return order.Order{}, orders.ErrConflict
 			}
 		}
 		return order.Order{}, err
-
 	}
-	ItemRows := make([]ItemRow, 0)
-	for i := range o.Items {
-		var itemRow ItemRow
 
-		row := tx.QueryRow(
-			ctx, qItem,
+	itemRows := make([]ItemRow, 0, len(o.Items))
+	for i := range o.Items {
+		var ir ItemRow
+		row := tx.QueryRow(ctx, qItem,
 			o.OrderUID,
 			o.Items[i].ChrtId,
 			o.Items[i].TrackNumber,
@@ -185,55 +185,43 @@ func (r *OrderRepo) CreateOrUpdateOrder(ctx context.Context, o order.Order) (ord
 			o.Items[i].Brand,
 			o.Items[i].Status,
 		)
-
 		if err := row.Scan(
-			&itemRow.ChrtId,
-			&itemRow.TrackNumber,
-			&itemRow.Price,
-			&itemRow.Rid,
-			&itemRow.Name,
-			&itemRow.Sale,
-			&itemRow.Size,
-			&itemRow.TotalPrice,
-			&itemRow.NmId,
-			&itemRow.Brand,
-			&itemRow.Status,
+			&ir.ChrtId,
+			&ir.TrackNumber,
+			&ir.Price,
+			&ir.Rid,
+			&ir.Name,
+			&ir.Sale,
+			&ir.Size,
+			&ir.TotalPrice,
+			&ir.NmId,
+			&ir.Brand,
+			&ir.Status,
 		); err != nil {
-
 			if errors.Is(err, pgx.ErrNoRows) {
 				return order.Order{}, orders.ErrUnexpected
 			}
-
 			if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) || ctx.Err() != nil {
 				return order.Order{}, orders.ErrTimeout
 			}
-
 			var pgerr *pgconn.PgError
 			if errors.As(err, &pgerr) {
 				switch pgerr.Code {
 				case "23503":
 					return order.Order{}, orders.ErrInvalidReference
-				case "23514":
+				case "23514", "23502", "22001", "22P02":
 					return order.Order{}, orders.ErrInvalidData
 				case "23505":
 					return order.Order{}, orders.ErrConflict
-				case "23502":
-					return order.Order{}, orders.ErrInvalidData
-				case "22001":
-					return order.Order{}, orders.ErrInvalidData
-				case "22P02":
-					return order.Order{}, orders.ErrInvalidData
-				case "40001":
-					return order.Order{}, orders.ErrRetryable
-				case "40P01":
+				case "40001", "40P01":
 					return order.Order{}, orders.ErrRetryable
 				}
 			}
-
 			return order.Order{}, err
 		}
-		ItemRows = append(ItemRows, itemRow)
+		itemRows = append(itemRows, ir)
 	}
+
 	if len(o.Items) == 0 {
 		if _, err := tx.Exec(ctx, `DELETE FROM order_items WHERE order_uid = $1`, o.OrderUID); err != nil {
 			return order.Order{}, err
@@ -244,10 +232,10 @@ func (r *OrderRepo) CreateOrUpdateOrder(ctx context.Context, o order.Order) (ord
 			ids = append(ids, o.Items[i].ChrtId)
 		}
 		if _, err := tx.Exec(ctx, `
-        DELETE FROM order_items
-        WHERE order_uid = $1
-          AND chrt_id NOT IN (SELECT unnest($2::text[]))
-    `, o.OrderUID, ids); err != nil {
+			DELETE FROM order_items
+			WHERE order_uid = $1
+			  AND NOT (chrt_id = ANY($2::text[]))
+		`, o.OrderUID, ids); err != nil {
 			return order.Order{}, err
 		}
 	}
@@ -255,5 +243,49 @@ func (r *OrderRepo) CreateOrUpdateOrder(ctx context.Context, o order.Order) (ord
 	if err := tx.Commit(ctx); err != nil {
 		return order.Order{}, err
 	}
-	return orderRow.ToDomain(), nil
+
+	out := orderRow.ToDomain()
+
+	out.Delivery = order.Delivery{
+		Name:    deliveryRow.Name,
+		Phone:   deliveryRow.Phone,
+		Zip:     deliveryRow.Zip,
+		City:    deliveryRow.City,
+		Address: deliveryRow.Address,
+		Region:  deliveryRow.Region,
+		Email:   deliveryRow.Email,
+	}
+
+	out.Payment = order.Payment{
+		Transaction:  pRow.Transaction,
+		RequestId:    pRow.RequestID,
+		Currency:     pRow.Currency,
+		Provider:     pRow.Provider,
+		Amount:       pRow.Amount,
+		PaymentDt:    pRow.PaymentDt,
+		Bank:         pRow.Bank,
+		DeliveryCost: pRow.DeliveryCost,
+		GoodsTotal:   pRow.GoodsTotal,
+		CustomFee:    pRow.CustomFee,
+	}
+
+	out.Items = make([]order.Item, 0, len(itemRows))
+	for i := range itemRows {
+		it := itemRows[i]
+		out.Items = append(out.Items, order.Item{
+			ChrtId:      it.ChrtId,
+			TrackNumber: it.TrackNumber,
+			Price:       it.Price,
+			Rid:         it.Rid,
+			Name:        it.Name,
+			Sale:        it.Sale,
+			Size:        it.Size,
+			TotalPrice:  it.TotalPrice,
+			NmId:        it.NmId,
+			Brand:       it.Brand,
+			Status:      it.Status,
+		})
+	}
+
+	return out, nil
 }

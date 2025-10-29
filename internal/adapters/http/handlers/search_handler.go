@@ -1,14 +1,14 @@
 package handlers
 
 import (
+	"github.com/reybrally/order-service/internal/adapters/http/handlers/normalization"
+	"github.com/reybrally/order-service/internal/logging"
+	"github.com/sirupsen/logrus"
 	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/reybrally/order-service/internal/app/orders"
 )
-
-// SearchOrders — GET /orders/search
 
 func (h *OrderHandlers) SearchOrders(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
@@ -22,6 +22,7 @@ func (h *OrderHandlers) SearchOrders(w http.ResponseWriter, r *http.Request) {
 		if t, err := time.Parse(time.RFC3339, s); err == nil {
 			f.CreatedFrom = &t
 		} else {
+			logging.LogError("Invalid 'created_from' query parameter", err, logrus.Fields{"method": "SearchOrders"})
 			writeError(w, http.StatusBadRequest, "invalid created_from (RFC3339 expected)")
 			return
 		}
@@ -30,60 +31,35 @@ func (h *OrderHandlers) SearchOrders(w http.ResponseWriter, r *http.Request) {
 		if t, err := time.Parse(time.RFC3339, s); err == nil {
 			f.CreatedTo = &t
 		} else {
+			logging.LogError("Invalid 'created_to' query parameter", err, logrus.Fields{"method": "SearchOrders"})
 			writeError(w, http.StatusBadRequest, "invalid created_to (RFC3339 expected)")
 			return
 		}
 	}
 
-	if s := q.Get("order_uid"); s != "" {
-		f.OrderUID = strptr(s)
-	}
-	if s := q.Get("track_number"); s != "" {
-		f.TrackNumber = strptr(s)
-	}
-	if s := q.Get("customer_id"); s != "" {
-		f.CustomerID = strptr(s)
-	}
-	if s := q.Get("provider"); s != "" {
-		f.Provider = strptr(s)
-	}
-	if s := q.Get("currency"); s != "" {
-		f.Currency = strptr(s)
-	}
+	f.OrderUID = strptr(q.Get("order_uid"))
+	f.TrackNumber = strptr(q.Get("track_number"))
+	f.CustomerID = strptr(q.Get("customer_id"))
+	f.Provider = strptr(q.Get("provider"))
+	f.Currency = strptr(q.Get("currency"))
+	f.Query = strptr(q.Get("q"))
 
-	if s := q.Get("q"); s != "" {
-		f.Query = strptr(s)
-	}
+	normalization.NormalizeSearchFilters(&f)
 
-	if s := q.Get("sort_by"); s != "" {
-		p.SortBy = s
-	}
-	if s := q.Get("sort_dir"); s != "" {
-		p.SortDir = s
-	}
-	if s := q.Get("limit"); s != "" {
-		if v, err := strconv.Atoi(s); err == nil {
-			p.Limit = v
-		} else {
-			writeError(w, http.StatusBadRequest, "invalid limit")
-			return
-		}
-	}
-	if s := q.Get("offset"); s != "" {
-		if v, err := strconv.Atoi(s); err == nil {
-			p.Offset = v
-		} else {
-			writeError(w, http.StatusBadRequest, "invalid offset")
-			return
-		}
-	}
+	normalization.NormalizeRequest(&p)
+
+	logging.LogDebug("Search filters", logrus.Fields{"method": "SearchOrders", "filters": f})
+	logging.LogDebug("Page request", logrus.Fields{"method": "SearchOrders", "page_request": p})
 
 	ctx := r.Context()
 	list, err := h.svc.SearchOrder(ctx, f, p)
 	if err != nil {
+		logging.LogError("Error searching orders", err, logrus.Fields{"method": "SearchOrders"})
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
+
+	logging.LogInfo("Orders found", logrus.Fields{"method": "SearchOrders", "count": len(list)})
 
 	writeJSON(w, http.StatusOK, ToResponseList(list))
 }

@@ -3,16 +3,16 @@ package kafka
 import "time"
 
 type Envelope[T any] struct {
-	EventType  string    `json:"event_type"`  // "order.upserted"
-	Version    int       `json:"version"`     // 1
-	OccurredAt time.Time `json:"occurred_at"` // UTC
-	EntityID   string    `json:"entity_id"`   // обычно = order_uid (дублируем key)
-	Payload    T         `json:"payload"`     // полезная нагрузка
+	EventType  string    `json:"event_type"`
+	Version    int       `json:"version"`
+	OccurredAt time.Time `json:"occurred_at"`
+	EntityID   string    `json:"entity_id"`
+	Payload    T         `json:"payload"`
 	Meta       Meta      `json:"meta"`
 }
 
 type Meta struct {
-	Producer string `json:"producer"` // "order-service"
-	TraceID  string `json:"trace_id"` // прокидывай из контекста
-	Source   string `json:"source"`   // "http-api" | "seeder" | ...
+	Producer string `json:"producer"`
+	TraceID  string `json:"trace_id"`
+	Source   string `json:"source"`
 }

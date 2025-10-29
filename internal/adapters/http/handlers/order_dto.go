@@ -63,12 +63,10 @@ type ItemDTO struct {
 }
 
 func (r OrderUpsertRequest) ToModel() (order.Order, error) {
-	// Лёгкая синтаксическая проверка «обязательных» полей
 	if r.TrackNumber == "" || r.Entry == "" || r.Locale == "" || r.CustomerID == "" || r.DeliveryService == "" {
 		return order.Order{}, errors.New("missing required fields")
 	}
 
-	// Парсим дату из JSON для payment_dt
 	var payTime time.Time
 	if r.Payment.PaymentDtRFC != "" {
 		t, err := time.Parse(time.RFC3339, r.Payment.PaymentDtRFC)
@@ -78,7 +76,6 @@ func (r OrderUpsertRequest) ToModel() (order.Order, error) {
 		payTime = t
 	}
 
-	// Парсим дату для DateCreated
 	var createdAt time.Time
 	if r.DateCreatedRFC != "" {
 		t, err := time.Parse(time.RFC3339, r.DateCreatedRFC)
@@ -87,7 +84,7 @@ func (r OrderUpsertRequest) ToModel() (order.Order, error) {
 		}
 		createdAt = t
 	} else {
-		createdAt = time.Now().UTC() // если дата не передана — ставим текущее время
+		createdAt = time.Now().UTC()
 	}
 
 	out := order.Order{
@@ -123,7 +120,7 @@ func (r OrderUpsertRequest) ToModel() (order.Order, error) {
 			GoodsTotal:   r.Payment.GoodsTotal,
 			CustomFee:    r.Payment.CustomFee,
 		},
-		DateCreated: createdAt, // дата будет установлена здесь
+		DateCreated: createdAt,
 		Items:       make([]order.Item, 0, len(r.Items)),
 	}
 
@@ -153,7 +150,6 @@ func derefStr(p *string) string {
 	return *p
 }
 
-// OrderResponse — DTO для ответа клиенту
 type OrderResponse struct {
 	OrderUID        string           `json:"order_uid"`
 	TrackNumber     string           `json:"track_number"`
@@ -167,7 +163,6 @@ type OrderResponse struct {
 	Items           []ItemResponse   `json:"items"`
 }
 
-// DeliveryResponse — вложенная структура для ответа
 type DeliveryResponse struct {
 	Name    string `json:"name"`
 	Phone   string `json:"phone"`
@@ -178,7 +173,6 @@ type DeliveryResponse struct {
 	Email   string `json:"email"`
 }
 
-// PaymentResponse — платежная часть
 type PaymentResponse struct {
 	Transaction  string `json:"transaction"`
 	Currency     string `json:"currency"`
@@ -191,7 +185,6 @@ type PaymentResponse struct {
 	CustomFee    int64  `json:"custom_fee"`
 }
 
-// ItemResponse — элементы заказа
 type ItemResponse struct {
 	ChrtID      string `json:"chrt_id"`
 	TrackNumber string `json:"track_number"`
@@ -206,7 +199,6 @@ type ItemResponse struct {
 	Status      int64  `json:"status"`
 }
 
-// ToResponse — маппинг domain.Order → OrderResponse
 func ToResponse(o order.Order) OrderResponse {
 	resp := OrderResponse{
 		OrderUID:        o.OrderUID,
@@ -215,7 +207,7 @@ func ToResponse(o order.Order) OrderResponse {
 		Locale:          o.Locale,
 		CustomerID:      o.CustomerId,
 		DeliveryService: o.DeliveryService,
-		DateCreated:     o.DateCreated.Format("2006-01-02T15:04:05Z07:00"), // RFC3339
+		DateCreated:     o.DateCreated.Format("2006-01-02T15:04:05Z07:00"),
 
 		Delivery: DeliveryResponse{
 			Name:    o.Delivery.Name,

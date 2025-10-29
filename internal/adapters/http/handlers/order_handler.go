@@ -37,7 +37,6 @@ func writeError(w http.ResponseWriter, code int, msg string) {
 	writeJSON(w, code, errorResponse{Error: msg})
 }
 
-// ToResponseList — helper для массива
 func ToResponseList(src []order.Order) []OrderResponse {
 	out := make([]OrderResponse, 0, len(src))
 	for _, o := range src {

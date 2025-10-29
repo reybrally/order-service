@@ -22,7 +22,6 @@ type OrderSearcher interface {
 	SearchOrders(ctx context.Context, filters SearchFilters, request PageRequest) ([]domain.Order, error)
 }
 
-// фильтр поиска
 type SearchFilters struct {
 	CreatedFrom *time.Time
 	CreatedTo   *time.Time
@@ -36,7 +35,6 @@ type SearchFilters struct {
 	Query *string
 }
 
-// ограничения для фильтра
 type PageRequest struct {
 	Limit   int
 	Offset  int

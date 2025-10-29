@@ -1,15 +1,22 @@
-services:
+version: "3.9"
 
+services:
   redpanda:
     image: docker.redpanda.com/redpandadata/redpanda:v24.2.7
     container_name: redpanda
     command:
       - redpanda start --overprovisioned --smp 1 --memory 1G --reserve-memory 0M
-        --node-id 0 --check=false --kafka-addr PLAINTEXT://0.0.0.0:9092
-        --advertise-kafka-addr PLAINTEXT://localhost:9092
+        --node-id 0 --check=false
+        --kafka-addr PLAINTEXT://0.0.0.0:9092
+        --advertise-kafka-addr PLAINTEXT://redpanda:9092
     ports:
       - "9092:9092"
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "rpk", "cluster", "info"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
 
   postgres:
     image: postgres:16
@@ -18,17 +25,89 @@ services:
     ports:
       - "${PG_DOCKER_PORT:-55432}:5432"
     environment:
-      POSTGRES_PASSWORD: ${PG_DOCKER_PASSWORD}
-      POSTGRES_DB: ${PG_DOCKER_DB}
-      POSTGRES_USER: ${PG_DOCKER_USER}
+      POSTGRES_PASSWORD: ${PG_DOCKER_PASSWORD:-app}
+      POSTGRES_DB: ${PG_DOCKER_DB:-app}
+      POSTGRES_USER: ${PG_DOCKER_USER:-app}
     healthcheck:
-      test: ["CMD", "pg_isready", "-U", "${PG_DOCKER_USER}", "-d", "${PG_DOCKER_DB}"]
+      test: ["CMD", "pg_isready", "-U", "${PG_DOCKER_USER:-app}", "-d", "${PG_DOCKER_DB:-app}"]
       interval: 3s
       timeout: 2s
       retries: 20
     volumes:
       - pgdata:/var/lib/postgresql/data
+
+  migrator:
+    build:
+      context: .
+      args: { BIN: migrator }
+    environment:
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_NAME: ${PG_DOCKER_DB:-app}
+      DB_USER: ${PG_DOCKER_USER:-app}
+      DB_PASSWORD: ${PG_DOCKER_PASSWORD:-app}
+      DB_SSLMODE: disable
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  seeder:
+    build:
+      context: .
+      args: { BIN: seeder }
+    environment:
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_NAME: ${PG_DOCKER_DB:-app}
+      DB_USER: ${PG_DOCKER_USER:-app}
+      DB_PASSWORD: ${PG_DOCKER_PASSWORD:-app}
+      DB_SSLMODE: disable
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrator:
+        condition: service_completed_successfully
+    restart: "no"
+
+  topic-init:
+    image: docker.redpanda.com/redpandadata/redpanda:v24.2.7
+    entrypoint: ["/bin/sh","-lc"]
+    command: >
+      "rpk topic create orders-events -p 3 -r 1 || true"
+    depends_on:
+      redpanda:
+        condition: service_healthy
+    restart: "no"
+
+  server:
+    build:
+      context: .
+      args: { BIN: server }
+    environment:
+      PORT: "8080"
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_NAME: ${PG_DOCKER_DB:-app}
+      DB_USER: ${PG_DOCKER_USER:-app}
+      DB_PASSWORD: ${PG_DOCKER_PASSWORD:-app}
+      DB_SSLMODE: disable
+      KAFKA_BROKERS: redpanda:9092
+      ORDERS_EVENTS_TOPIC: orders-events
+      ORDERS_CONSUMER_GROUP: order-service-reader
+    ports:
+      - "8080:8080"
+    depends_on:
+      redpanda:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+
+      topic-init:
+        condition: service_completed_successfully
+      seeder:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
 volumes:
   pgdata: {}
-
-

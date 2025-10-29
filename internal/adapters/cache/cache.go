@@ -18,8 +18,8 @@ type lruNode struct {
 type CacheService struct {
 	mu       sync.Mutex
 	cache    map[string]*lruNode
-	head     *lruNode // наименее актуальная (LRA)
-	tail     *lruNode // наиболее актуальная (MRU)
+	head     *lruNode
+	tail     *lruNode
 	capacity int
 }
 
@@ -33,31 +33,26 @@ func NewCacheService(capacity int) *CacheService {
 	}
 }
 
-// Set: вставить/обновить и пометить как MRU.
 func (c *CacheService) Set(key string, value order.Order) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	// Обновление существующей ноды
 	if nd, ok := c.cache[key]; ok {
 		nd.value = value
 		c.moveToTail(nd)
 		return nil
 	}
 
-	// Эвикт при заполнении
 	if len(c.cache) >= c.capacity {
-		c.evictHead() // корректно удалит и из списка, и из map
+		c.evictHead()
 	}
 
-	// Вставка новой ноды в хвост (MRU)
 	nd := &lruNode{key: key, value: value}
 	c.appendToTail(nd)
 	c.cache[key] = nd
 	return nil
 }
 
-// Get: получить и пометить как MRU. На промах — orders.ErrNotFound.
 func (c *CacheService) Get(key string) (order.Order, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -70,7 +65,6 @@ func (c *CacheService) Get(key string) (order.Order, error) {
 	return nd.value, nil
 }
 
-// Delete: удалить ключ. Если нет — orders.ErrNotFound.
 func (c *CacheService) Delete(key string) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -93,7 +87,6 @@ func (c *CacheService) Clear() {
 	c.tail = nil
 }
 
-// Доп. удобства (по желанию)
 func (c *CacheService) Len() int {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -101,10 +94,8 @@ func (c *CacheService) Len() int {
 }
 func (c *CacheService) Cap() int { return c.capacity }
 
-// ===== внутренняя работа со списком =====
-
 func (c *CacheService) appendToTail(nd *lruNode) {
-	if c.tail == nil { // пустой список
+	if c.tail == nil {
 		c.head = nd
 		c.tail = nd
 		return
@@ -115,12 +106,10 @@ func (c *CacheService) appendToTail(nd *lruNode) {
 }
 
 func (c *CacheService) moveToTail(nd *lruNode) {
-	if nd == c.tail { // уже MRU
+	if nd == c.tail {
 		return
 	}
-	// сначала отцепить из текущей позиции
 	c.unlink(nd)
-	// а затем приложить к хвосту
 	c.appendToTail(nd)
 }
 
@@ -138,21 +127,17 @@ func (c *CacheService) unlink(nd *lruNode) {
 		return
 	}
 
-	// связываем соседей между собой
 	if nd.prev != nil {
 		nd.prev.next = nd.next
 	} else {
-		// nd был головой
 		c.head = nd.next
 	}
 	if nd.next != nil {
 		nd.next.prev = nd.prev
 	} else {
-		// nd был хвостом
 		c.tail = nd.prev
 	}
 
-	// зануляем ссылки ноды (на всякий случай)
 	nd.prev = nil
 	nd.next = nil
 }

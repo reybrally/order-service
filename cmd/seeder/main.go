@@ -91,7 +91,7 @@ func main() {
 			orderUID := fmt.Sprintf("ORD-%06d", i)
 			itemsCount := minItems + rand.Intn(maxItems-minItems+1)
 			for j := 1; j <= itemsCount; j++ {
-				chrtID := fmt.Sprintf("%d", 10000+i*10+j) // string в домене
+				chrtID := fmt.Sprintf("%d", 10000+i*10+j)
 				track := fmt.Sprintf("TRK-%06d", i)
 				price := int64(1000 + rand.Intn(300000))
 				sale := int64(rand.Intn(30000))
@@ -102,7 +102,7 @@ func main() {
 				}
 				rid := fmt.Sprintf("RID-%06d-%02d", i, j)
 				name := []string{"Кроссовки", "Футболка", "Наушники", "Кружка", "Рюкзак"}[rand.Intn(5)]
-				nmID := fmt.Sprintf("%d", 5000+rand.Intn(5000)) // string в домене
+				nmID := fmt.Sprintf("%d", 5000+rand.Intn(5000))
 				brand := []string{"Nike", "Adidas", "Puma", "Reebok", "Apple", "Xiaomi"}[rand.Intn(6)]
 				status := int64(1)
 

@@ -1,15 +1,16 @@
 package handlers
 
 import (
+	"github.com/reybrally/order-service/internal/logging"
+	"github.com/sirupsen/logrus"
 	"net/http"
 	"time"
 )
 
 var startedAt = time.Now()
 
-// HealthHandler — простой liveness/probe.
-// Если захочешь readiness (проверка БД/Кафки) — добавим позже.
 func HealthHandler(w http.ResponseWriter, r *http.Request) {
+	logging.LogInfo("Health check requested", logrus.Fields{"method": "HealthHandler"})
 	resp := map[string]any{
 		"status":     "ok",
 		"service":    "order-service",

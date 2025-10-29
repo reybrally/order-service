@@ -8,25 +8,23 @@ import (
 )
 
 type Producer interface {
-	// Publish отправляет уже готовые bytes (если сериализуешь сам)
 	Publish(ctx context.Context, topic string, key []byte, value []byte, headers map[string]string) error
 
-	// PublishJSON сериализует value в JSON и отправляет
 	PublishJSON(ctx context.Context, topic string, key []byte, value any, headers map[string]string) error
 
 	Close() error
 }
 
 type ProducerConfig struct {
-	Brokers                []string           // ["localhost:9092"]
-	ClientID               string             // "order-service"
-	RequiredAcks           kafka.RequiredAcks // kafka.RequireAll для acks=all
-	BatchBytes             int                // напр. 1048576 (1MB)
-	BatchTimeout           time.Duration      // напр. 50 * time.Millisecond
-	Compression            kafka.Compression  // kafka.Snappy или Lz4/None
-	Async                  bool               // оставь false для синхронной отправки
-	WriteTimeout           time.Duration      // 5s
-	AllowAutoTopicCreation bool               // true локально, false в проде
+	Brokers                []string
+	ClientID               string
+	RequiredAcks           kafka.RequiredAcks
+	BatchBytes             int
+	BatchTimeout           time.Duration
+	Compression            kafka.Compression
+	Async                  bool
+	WriteTimeout           time.Duration
+	AllowAutoTopicCreation bool
 }
 
 type writerProducer struct {
@@ -35,14 +33,13 @@ type writerProducer struct {
 
 func NewProducer(cfg ProducerConfig) (Producer, error) {
 	w := &kafka.Writer{
-		Addr:         kafka.TCP(cfg.Brokers...),
-		Balancer:     &kafka.Hash{}, // важен порядок по ключу
-		RequiredAcks: cfg.RequiredAcks,
-		BatchBytes:   int64(cfg.BatchBytes),
-		BatchTimeout: cfg.BatchTimeout,
-		Compression:  cfg.Compression,
-		Async:        cfg.Async,
-		// Note: Topic не задаём здесь, чтобы писать в разные топики
+		Addr:                   kafka.TCP(cfg.Brokers...),
+		Balancer:               &kafka.Hash{},
+		RequiredAcks:           cfg.RequiredAcks,
+		BatchBytes:             int64(cfg.BatchBytes),
+		BatchTimeout:           cfg.BatchTimeout,
+		Compression:            cfg.Compression,
+		Async:                  cfg.Async,
 		AllowAutoTopicCreation: cfg.AllowAutoTopicCreation,
 	}
 	return &writerProducer{w: w}, nil
@@ -62,7 +59,6 @@ func (p *writerProducer) Publish(ctx context.Context, topic string, key, value [
 		}
 	}
 
-	// Доп. safety: honor таймаут из cfg, если в ctx его нет — можно оборачивать с timeout выше по стеку.
 	return p.w.WriteMessages(ctx, msg)
 }
 

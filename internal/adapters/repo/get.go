@@ -79,26 +79,22 @@ func (r OrderRepo) GetOrder(ctx context.Context, uid string) (order.Order, error
 	for rows.Next() {
 		found = true
 
-		// order
 		var (
 			orderUID, trackNumber, entry, locale, internalSig, customerID, deliveryService, shardKey string
 			smID, oofShard                                                                           int64
 			dateCreated                                                                              time.Time
 		)
 
-		// delivery
 		var (
 			dName, dPhone, dZip, dCity, dAddress, dRegion, dEmail *string
 		)
 
-		// payment
 		var (
 			pTransaction, pRequestID, pCurrency, pProvider, pBank *string
 			pAmount, pDeliveryCost, pGoodsTotal, pCustomFee       *int64
 			pPaymentDt                                            *time.Time
 		)
 
-		// item
 		var (
 			iChrtID, iItemTrackNumber, iRid, iName, iNmID, iBrand *string
 			iPrice, iSale, iSize, iTotalPrice, iStatus            *int64
@@ -116,7 +112,6 @@ func (r OrderRepo) GetOrder(ctx context.Context, uid string) (order.Order, error
 			return order.Order{}, err
 		}
 
-		// Инициализируем "шапку" один раз (на первой строке)
 		if out.OrderUID == "" {
 			out = order.Order{
 				OrderUID:          orderUID,
@@ -155,7 +150,6 @@ func (r OrderRepo) GetOrder(ctx context.Context, uid string) (order.Order, error
 			}
 		}
 
-		// добавляем item
 		if iChrtID != nil {
 			out.Items = append(out.Items, order.Item{
 				ChrtId:      derefStr(iChrtID),

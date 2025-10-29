@@ -1,4 +1,3 @@
-// internal/adapters/kafka/consumer.go
 package kafka
 
 import (
@@ -10,14 +9,11 @@ import (
 	kgo "github.com/segmentio/kafka-go"
 )
 
-// Message — обертка над kafka-go с уже распарсенным Envelope.
 type Message struct {
-	Topic   string
-	Key     []byte
-	Headers map[string]string
-	// Сырые байты, если нужно логировать/слать в DLQ
-	Raw kgo.Message
-	// Декодированный конверт с RawPayload (распарсим payload позднее по event_type)
+	Topic    string
+	Key      []byte
+	Headers  map[string]string
+	Raw      kgo.Message
 	Envelope Envelope[json.RawMessage]
 }
 
@@ -31,21 +27,20 @@ type Consumer interface {
 type ConsumerConfig struct {
 	Brokers           []string
 	ClientID          string
-	MinBytes          int           // 1<<10
-	MaxBytes          int           // 10<<20
-	MaxWait           time.Duration // 100 * time.Millisecond
-	SessionTimeout    time.Duration // 10 * time.Second
-	RebalanceTimeout  time.Duration // 10 * time.Second
-	HeartbeatInterval time.Duration // 3 * time.Second
-	StartOffset       int64         // kgo.FirstOffset / kgo.LastOffset
-	// Ретраи обработки
-	MaxRetries int           // 5
-	Backoff    time.Duration // 200 * time.Millisecond
+	MinBytes          int
+	MaxBytes          int
+	MaxWait           time.Duration
+	SessionTimeout    time.Duration
+	RebalanceTimeout  time.Duration
+	HeartbeatInterval time.Duration
+	StartOffset       int64
+	MaxRetries        int
+	Backoff           time.Duration
 }
 
 type readerConsumer struct {
 	cfg    ConsumerConfig
-	reader *kgo.Reader // создаём per-topic в Subscribe
+	reader *kgo.Reader
 }
 
 func NewConsumer(cfg ConsumerConfig) Consumer {
@@ -71,25 +66,21 @@ func (c *readerConsumer) Subscribe(ctx context.Context, topic string, groupID st
 	for {
 		m, err := r.FetchMessage(ctx)
 		if err != nil {
-			// Контекст закрыт — graceful shutdown
 			if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
 				return nil
 			}
-			// Временная ошибка брокера — подождём и продолжим
 			time.Sleep(200 * time.Millisecond)
 			continue
 		}
 
 		msg := toMessage(topic, m)
 
-		// Ретраим обработчик (at-least-once)
 		var hErr error
 		for attempt := 0; attempt <= c.cfg.MaxRetries; attempt++ {
 			hErr = handler(ctx, msg)
 			if hErr == nil {
 				break
 			}
-			// если контекст умер — выходим тихо
 			if ctx.Err() != nil {
 				return nil
 			}
@@ -97,14 +88,10 @@ func (c *readerConsumer) Subscribe(ctx context.Context, topic string, groupID st
 		}
 
 		if hErr != nil {
-			// сюда можно добавить отправку в DLQ через твой Producer
-			// _ = dlqProducer.Publish(...)
-			// но для старта просто пропустим и закоммитим, чтобы не застрять
+			// TODO : implement
 		}
 
-		// Коммитим независимо (at-least-once семантика + идемпотентные обработчики)
 		if err := r.CommitMessages(ctx, m); err != nil {
-			// ошибка коммита — попробуем ещё раз на следующей итерации
 			time.Sleep(100 * time.Millisecond)
 		}
 	}
@@ -123,7 +110,7 @@ func toMessage(topic string, m kgo.Message) Message {
 		hdrs[h.Key] = string(h.Value)
 	}
 	var env Envelope[json.RawMessage]
-	_ = json.Unmarshal(m.Value, &env) // намеренно игнорим ошибку здесь — handler может перепарсить сам
+	_ = json.Unmarshal(m.Value, &env)
 	return Message{
 		Topic:    topic,
 		Key:      m.Key,
