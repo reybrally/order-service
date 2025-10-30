@@ -129,5 +129,5 @@ func main() {
 		log.Fatalf("commit: %v", err)
 	}
 
-	log.Printf("✅ seeded %d orders (with items)\n", ordersN)
+	log.Printf("seeded %d orders (with items)\n", ordersN)
 }

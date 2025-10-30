@@ -19,7 +19,6 @@ type OrderService struct {
 	repo         orders.OrderRepo
 	cacheService cache.Cache
 
-	// Kafka
 	producer    kaf.Producer
 	eventsTopic string
 }
@@ -46,11 +45,9 @@ func (serv *OrderService) CreateOrUpdateOrder(ctx context.Context, or domain.Ord
 		return domain.Order{}, err
 	}
 
-	// Твоя текущая семантика кэша — сохраняем
 	_ = serv.cacheService.Set(ord.OrderUID, ord)
 	logging.LogInfo("Order created or updated successfully", logrus.Fields{"order_uid": ord.OrderUID})
 
-	// Публикуем событие в Kafka (cache projector/другие подписчики)
 	env := kaf.Envelope[kaf.OrderUpserted]{
 		EventType:  "order.upserted",
 		Version:    1,
@@ -121,7 +118,6 @@ func (serv *OrderService) DeleteOrder(ctx context.Context, id string) error {
 	return nil
 }
 
-// SearchOrder отдает список заказов по фильтрам и пагинации
 func (serv *OrderService) SearchOrder(ctx context.Context, filters orders.SearchFilters, req orders.PageRequest) ([]domain.Order, error) {
 	logging.LogInfo("Searching for orders", logrus.Fields{"filters": filters, "page_request": req})
 

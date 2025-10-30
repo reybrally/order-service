@@ -7,7 +7,6 @@ import (
 	"testing"
 )
 
-// мок структура для тестов
 func mockOrder(orderUID string, amount int64) order.Order {
 	return order.Order{
 		OrderUID: orderUID,
@@ -17,7 +16,6 @@ func mockOrder(orderUID string, amount int64) order.Order {
 	}
 }
 
-// TestLRUCacheMultipleEvictions проверяет несколько удалений элементов из кэша
 func TestLRUCacheMultipleEvictions(t *testing.T) {
 	c := NewCacheService(2)
 
@@ -47,7 +45,6 @@ func TestLRUCacheMultipleEvictions(t *testing.T) {
 	assert.Equal(t, mockOrder("d", 400), val)
 }
 
-// TestLRUCacheCapacity проверяет поведение кэша при достижении его емкости
 func TestLRUCacheCapacity(t *testing.T) {
 	c := NewCacheService(3)
 
@@ -77,7 +74,6 @@ func TestLRUCacheCapacity(t *testing.T) {
 	assert.Error(t, err)
 }
 
-// TestLRUCacheClearAll проверяет работу метода Clear
 func TestLRUCacheClearAll(t *testing.T) {
 	c := NewCacheService(3)
 
@@ -95,7 +91,6 @@ func TestLRUCacheClearAll(t *testing.T) {
 	assert.Error(t, err)
 }
 
-// TestLRUCacheUpdate проверяет обновление значения в кэше
 func TestLRUCacheUpdate(t *testing.T) {
 	c := NewCacheService(3)
 
@@ -110,7 +105,6 @@ func TestLRUCacheUpdate(t *testing.T) {
 	assert.Equal(t, mockOrder("a", 500), val)
 }
 
-// TestLRUCacheEvictionWithOrder проверяет правильность удаления элементов при обновлении
 func TestLRUCacheEvictionWithOrder(t *testing.T) {
 	c := NewCacheService(3)
 
@@ -143,7 +137,6 @@ func TestLRUCacheEvictionWithOrder(t *testing.T) {
 	assert.Equal(t, mockOrder("d", 400), val)
 }
 
-// TestLRUCacheMultipleEvictionsForMultipleSets проверяет работу кэша при множественном обновлении значений
 func TestLRUCacheMultipleEvictionsForMultipleSets(t *testing.T) {
 	c := NewCacheService(2)
 
@@ -170,7 +163,6 @@ func TestLRUCacheMultipleEvictionsForMultipleSets(t *testing.T) {
 	assert.Equal(t, mockOrder("c", 400), val)
 }
 
-// TestLRUCacheSize проверяет правильность размера кэша
 func TestLRUCacheSize(t *testing.T) {
 	c := NewCacheService(2)
 
@@ -192,7 +184,6 @@ func TestLRUCacheSize(t *testing.T) {
 	assert.Equal(t, 2, len(c.cache))
 }
 
-// TestLRUCacheEvictionWhenReachingMaxCapacity проверяет удаление элемента при превышении емкости
 func TestLRUCacheEvictionWhenReachingMaxCapacity(t *testing.T) {
 	c := NewCacheService(2)
 

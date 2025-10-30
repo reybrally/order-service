@@ -13,7 +13,6 @@ func NormalizeSearchFilters(f *orders.SearchFilters) {
 
 	now := time.Now().UTC()
 
-	// Преобразование CreatedFrom и CreatedTo в UTC
 	if f.CreatedFrom != nil {
 		t := toUTCSeconds(*f.CreatedFrom)
 		f.CreatedFrom = &t

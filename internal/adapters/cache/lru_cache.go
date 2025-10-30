@@ -14,7 +14,6 @@ type lruNode struct {
 	next  *lruNode
 }
 
-// CacheService — потокобезопасный LRU.
 type CacheService struct {
 	mu       sync.Mutex
 	cache    map[string]*lruNode
