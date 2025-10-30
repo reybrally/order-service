@@ -1,6 +1,12 @@
 version: "3.9"
 
 services:
+  redis:
+    image: redis:7
+    container_name: orders-redis
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
   redpanda:
     image: docker.redpanda.com/redpandadata/redpanda:v24.2.7
     container_name: redpanda
@@ -97,6 +103,8 @@ services:
       KAFKA_BROKERS: redpanda:9092
       ORDERS_EVENTS_TOPIC: orders-events
       ORDERS_CONSUMER_GROUP: order-service-reader
+      CACHE_BACKEND: redis
+      REDIS_ADDR: redis:6379
     ports:
       - "8080:8080"
     depends_on:
