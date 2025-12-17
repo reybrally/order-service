@@ -68,12 +68,12 @@ internal/
 
 
 Контейнеры:
-- server — основной Go-сервис (`order-service`)
-- postgres — БД
-- redpanda — Kafka брокер
-- redis — кэш
-- migrator/seeder — миграции и тестовые данные
-- topic-init — создаёт Kafka-топик `orders-events`
+- server - основной Go-сервис (`order-service`)
+- postgres - БД
+- redpanda - Kafka брокер
+- redis - кэш
+- migrator/seeder - миграции и тестовые данные
+- topic-init - создаёт Kafka-топик `orders-events`
 
 ---
 
